@@ -453,7 +453,7 @@ void deEEP() {
 
   File f = WLED_FS.open("/presets.json", "w");
   if (!f) {
-    errorFlag = ERR_FS_GENERAL;
+    errorFlag = Err::FS_GENERAL;
     return;
   }
   serializeJson(dDoc, f);

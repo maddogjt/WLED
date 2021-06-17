@@ -136,12 +136,13 @@ void publishMqtt()
   mqtt->publish(subuf, 0, true, "online");
 
   char apires[1024];
-  XML_response(nullptr, apires);
+  XML_response(nullptr, apires, 1024);
   strcpy(subuf, mqttDeviceTopic);
   strcat_P(subuf, PSTR("/v"));
   mqtt->publish(subuf, 0, false, apires);
 }
 
+static char mqttStatusTopic[40] = ""; // this must be global because of async handlers
 
 //HA autodiscovery was removed in favor of the native integration in HA v0.102.0
 
@@ -167,7 +168,7 @@ bool initMqtt()
   mqtt->setClientId(mqttClientID);
   if (mqttUser[0] && mqttPass[0]) mqtt->setCredentials(mqttUser, mqttPass);
 
-  strcpy(mqttStatusTopic, mqttDeviceTopic);
+  strncpy(mqttStatusTopic, mqttDeviceTopic, sizeof(mqttStatusTopic));
   strcat_P(mqttStatusTopic, PSTR("/status"));
   mqtt->setWill(mqttStatusTopic, 0, true, "offline");
   mqtt->setKeepAlive(MQTT_KEEP_ALIVE_TIME);

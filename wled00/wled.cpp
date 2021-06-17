@@ -32,23 +32,6 @@ void WLED::reset()
   ESP.restart();
 }
 
-bool oappendi(int i)
-{
-  char s[11];
-  sprintf(s, "%d", i);
-  return oappend(s);
-}
-
-bool oappend(const char* txt)
-{
-  uint16_t len = strlen(txt);
-  if (olen + len >= OMAX)
-    return false;        // buffer full
-  strcpy(obuf + olen, txt);
-  olen += len;
-  return true;
-}
-
 void prepareHostname(char* hostname)
 {
   const char *pC = serverDescription;
@@ -302,7 +285,7 @@ void WLED::setup()
 #endif
   if (!fsinit) {
     DEBUGFS_PRINTLN(F("FS failed!"));
-    errorFlag = ERR_FS_BEGIN;
+    errorFlag = Err::FS_BEGIN;
   } else deEEP();
   updateFSInfo();
 
@@ -325,6 +308,10 @@ void WLED::setup()
   #ifdef WLED_USE_ETHERNET
   WiFi.onEvent(WiFiEvent);
   #endif
+
+  WiFi.onEvent([](system_event_id_t event) -> void
+               { Serial.println(WiFi.localIP()); },
+               SYSTEM_EVENT_STA_GOT_IP);
 
   #ifdef WLED_ENABLE_ADALIGHT
   if (!pinManager.isPinAllocated(3)) {

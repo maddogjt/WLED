@@ -1,4 +1,5 @@
 #include "wled.h"
+#include "webserver/serve_message.h"
 
 /*
  * Receives client input
@@ -16,7 +17,7 @@ void _setRandomColor(bool _sec,bool fromButton)
 }
 
 
-bool isAsterisksOnly(const char* str, byte maxLen)
+static bool isAsterisksOnly(const char* str, byte maxLen)
 {
   for (byte i = 0; i < maxLen; i++) {
     if (str[i] == 0) break;
@@ -28,14 +29,14 @@ bool isAsterisksOnly(const char* str, byte maxLen)
 
 
 //called upon POST settings form submit
-void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
+void handleSettingsSet(AsyncWebServerRequest *request, SettingsPage subPage)
 {
 
   //0: menu 1: wifi 2: leds 3: ui 4: sync 5: time 6: sec 7: DMX 8: usermods
-  if (subPage <1 || subPage >8) return;
+  if (subPage < SettingsPage::Wifi || subPage >SettingsPage::UserMods) return;
 
   //WIFI SETTINGS
-  if (subPage == 1)
+  if (subPage == SettingsPage::Wifi)
   {
     strlcpy(clientSSID,request->arg(F("CS")).c_str(), 33);
 
@@ -73,7 +74,7 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
   }
 
   //LED SETTINGS
-  if (subPage == 2)
+  if (subPage == SettingsPage::Leds)
   {
     int t = 0;
 
@@ -189,14 +190,14 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
   }
 
   //UI
-  if (subPage == 3)
+  if (subPage == SettingsPage::UI)
   {
     strlcpy(serverDescription, request->arg(F("DS")).c_str(), 33);
     syncToggleReceive = request->hasArg(F("ST"));
   }
 
   //SYNC
-  if (subPage == 4)
+  if (subPage == SettingsPage::Sync)
   {
     int t = request->arg(F("UP")).toInt();
     if (t > 0) udpPort = t;
@@ -284,7 +285,7 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
   }
 
   //TIME
-  if (subPage == 5)
+  if (subPage == SettingsPage::Time)
   {
     ntpEnabled = request->hasArg(F("NT"));
     strlcpy(ntpServerName, request->arg(F("NS")).c_str(), 33);
@@ -358,7 +359,7 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
   }
 
   //SECURITY
-  if (subPage == 6)
+  if (subPage == SettingsPage::Security)
   {
     if (request->hasArg(F("RS"))) //complete factory reset
     {
@@ -419,7 +420,7 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
   #endif
 
   //USERMODS
-  if (subPage == 8)
+  if (subPage == SettingsPage::UserMods)
   {
     DynamicJsonDocument doc(JSON_BUFFER_SIZE);
     JsonObject um = doc.createNestedObject("um");
@@ -499,21 +500,21 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
     usermods.readFromConfig(um);  // force change of usermod parameters
   }
 
-  if (subPage != 2 && (subPage != 6 || !doReboot)) serializeConfig(); //do not save if factory reset or LED settings (which are saved after LED re-init)
-  if (subPage == 4) alexaInit();
+  if (subPage != SettingsPage::Leds && (subPage != SettingsPage::Security || !doReboot)) serializeConfig(); //do not save if factory reset or LED settings (which are saved after LED re-init)
+  if (subPage == SettingsPage::Sync) alexaInit();
 }
 
 
 
 //helper to get int value at a position in string
-int getNumVal(const String* req, uint16_t pos)
+static int getNumVal(const String* req, uint16_t pos)
 {
   return req->substring(pos+3).toInt();
 }
 
 
 //helper to get int value at a position in string
-bool updateVal(const String* req, const char* key, byte* val, byte minv, byte maxv)
+static bool updateVal(const String* req, const char* key, byte* val, byte minv = 0, byte maxv = 255)
 {
   int pos = req->indexOf(key);
   if (pos < 1) return false;

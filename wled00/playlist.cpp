@@ -25,7 +25,7 @@ uint16_t       playlistEntryDur = 0;      //duration of the current entry in ten
 //byte           parentPlaylistPresetId = 0; //for re-loading
 
 
-void shufflePlaylist() {
+static void shufflePlaylist() {
   int currentIndex = playlistLen;
   PlaylistEntry temporaryValue;
 

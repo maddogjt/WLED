@@ -213,7 +213,7 @@ bool appendObjectToFile(const char* key, JsonDocument* content, uint32_t s, uint
   updateFSInfo();
   
   if (f.size() + 9000 > (fsBytesTotal - fsBytesUsed)) { //make sure there is enough space to at least copy the file once
-    errorFlag = ERR_FS_QUOTA;
+    errorFlag = Err::FS_QUOTA;
     doCloseFile = true;
     return false;
   }

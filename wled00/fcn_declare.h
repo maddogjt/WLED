@@ -4,15 +4,27 @@
 #include "src/dependencies/espalexa/EspalexaDevice.h"
 #include "src/dependencies/e131/ESPAsyncE131.h"
 
+enum class SettingsPage
+{
+  None,
+  Wifi,
+  Leds,
+  UI,
+  Sync,
+  Time,
+  Security,
+  DMX,
+  UserMods,
+  Welcome = 255
+};
+
 /*
  * All globally accessible functions are declared here
  */
 
 //alexa.cpp
-void onAlexaChange(EspalexaDevice* dev);
 void alexaInit();
 void handleAlexa();
-void onAlexaChange(EspalexaDevice* dev);
 
 //blynk.cpp
 void initBlynk(const char* auth, const char* host, uint16_t port);
@@ -28,7 +40,6 @@ void handleIO();
 //cfg.cpp
 bool deserializeConfig(JsonObject doc, bool fromFS = false);
 void deserializeConfigFromFS();
-bool deserializeConfigSec();
 void serializeConfig();
 void serializeConfigSec();
 
@@ -88,27 +99,11 @@ void closeFile();
 //hue.cpp
 void handleHue();
 void reconnectHue();
-void onHueError(void* arg, AsyncClient* client, int8_t error);
-void onHueConnect(void* arg, AsyncClient* client);
-void sendHuePoll();
-void onHueData(void* arg, AsyncClient* client, void *data, size_t len);
 
 //ir.cpp
-bool decodeIRCustom(uint32_t code);
-void applyRepeatActions();
-void relativeChange(byte* property, int8_t amount, byte lowerBoundary = 0, byte higherBoundary = 0xFF);
 void changeEffectSpeed(int8_t amount);
 void changeEffectIntensity(int8_t amount);
 void decodeIR(uint32_t code);
-void decodeIR24(uint32_t code);
-void decodeIR24OLD(uint32_t code);
-void decodeIR24CT(uint32_t code);
-void decodeIR40(uint32_t code);
-void decodeIR44(uint32_t code);
-void decodeIR21(uint32_t code);
-void decodeIR6(uint32_t code);
-void decodeIR9(uint32_t code);
-void decodeIRJson(uint32_t code);
 
 void initIR();
 void handleIR();
@@ -119,9 +114,7 @@ void handleIR();
 #include "src/dependencies/json/AsyncJson-v6.h"
 #include "FX.h"
 
-void deserializeSegment(JsonObject elem, byte it, byte presetId = 0);
 bool deserializeState(JsonObject root, byte callMode = CALL_MODE_DIRECT_CHANGE, byte presetId = 0);
-void serializeSegment(JsonObject& root, WS2812FX::Segment& seg, byte id, bool forPreset = false, bool segmentBounds = true);
 void serializeState(JsonObject root, bool forPreset = false, bool includeBri = true, bool segmentBounds = true);
 void serializeInfo(JsonObject root);
 void serveJson(AsyncWebServerRequest* request);
@@ -150,15 +143,9 @@ void publishMqtt();
 
 //ntp.cpp
 void handleTime();
-void handleNetworkTime();
-void sendNTPPacket();
-bool checkNTPResponse();    
 void updateLocalTime();
 void getTimeString(char* out);
-bool checkCountdown();
 void setCountdown();
-byte weekdayMondayFirst();
-void checkTimers();
 void calculateSunriseAndSunset();
 void setTimeFromAPI(uint32_t timein);
 
@@ -166,16 +153,9 @@ void setTimeFromAPI(uint32_t timein);
 void initCronixie();
 void handleOverlays();
 void handleOverlayDraw();
-void _overlayAnalogCountdown();
-void _overlayAnalogClock();
-
-byte getSameCodeLength(char code, int index, char const cronixieDisplay[]);
 void setCronixie();
-void _overlayCronixie();    
-void _drawOverlayCronixie();
 
 //playlist.cpp
-void shufflePlaylist();
 void unloadPlaylist();
 int16_t loadPlaylist(JsonObject playlistObject, byte presetId = 0);
 void handlePlaylist();
@@ -187,11 +167,8 @@ void deletePreset(byte index);
 
 //set.cpp
 void _setRandomColor(bool _sec,bool fromButton=false);
-bool isAsterisksOnly(const char* str, byte maxLen);
-void handleSettingsSet(AsyncWebServerRequest *request, byte subPage);
+void handleSettingsSet(AsyncWebServerRequest *request, SettingsPage subPage);
 bool handleSet(AsyncWebServerRequest *request, const String& req, bool apply=true);
-int getNumVal(const String* req, uint16_t pos);
-bool updateVal(const String* req, const char* key, byte* val, byte minv=0, byte maxv=255);
 
 //udp.cpp
 void notify(byte callMode, bool followUp=false);
@@ -259,16 +236,7 @@ void clearEEPROM();
 void handleSerial();
 
 //wled_server.cpp
-bool isIp(String str);
-bool captivePortal(AsyncWebServerRequest *request);
 void initServer();
-void serveIndexOrWelcome(AsyncWebServerRequest *request);
-void serveIndex(AsyncWebServerRequest* request);
-String msgProcessor(const String& var);
-void serveMessage(AsyncWebServerRequest* request, uint16_t code, const String& headl, const String& subl="", byte optionT=255);
-String settingsProcessor(const String& var);
-String dmxProcessor(const String& var);
-void serveSettings(AsyncWebServerRequest* request, bool post = false);
 
 //ws.cpp
 void handleWs();
@@ -276,10 +244,9 @@ void wsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventTyp
 void sendDataWs(AsyncWebSocketClient * client = nullptr);
 
 //xml.cpp
-void XML_response(AsyncWebServerRequest *request, char* dest = nullptr);
+void XML_response(AsyncWebServerRequest *request, char* dest = nullptr, size_t destSize = 0);
 void URL_response(AsyncWebServerRequest *request);
-void sappend(char stype, const char* key, int val);
-void sappends(char stype, const char* key, char* val);
-void getSettingsJS(byte subPage, char* dest);
+
+void getSettingsJS(SettingsPage subPage, char* dest, size_t destSize);
 
 #endif

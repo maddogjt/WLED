@@ -6,6 +6,11 @@
 
 #ifndef WLED_DISABLE_HUESYNC
 
+static void onHueError(void *arg, AsyncClient *client, int8_t error);
+static void onHueConnect(void *arg, AsyncClient *client);
+static void onHueData(void *arg, AsyncClient *client, void *data, size_t len);
+static void sendHuePoll();
+
 void handleHue()
 {
   if (hueReceived)
@@ -45,19 +50,19 @@ void reconnectHue()
   hueClient->connect(hueIP, 80);
 }
 
-void onHueError(void* arg, AsyncClient* client, int8_t error)
+static void onHueError(void* arg, AsyncClient* client, int8_t error)
 {
   DEBUG_PRINTLN(F("Hue err"));
   hueError = HUE_ERROR_TIMEOUT;
 }
 
-void onHueConnect(void* arg, AsyncClient* client)
+static void onHueConnect(void* arg, AsyncClient* client)
 {
   DEBUG_PRINTLN(F("Hue connect"));
   sendHuePoll();
 }
 
-void sendHuePoll()
+static void sendHuePoll()
 {
   if (hueClient == nullptr || !hueClient->connected()) return;
   String req = "";
@@ -81,7 +86,7 @@ void sendHuePoll()
   hueLastRequestSent = millis();
 }
 
-void onHueData(void* arg, AsyncClient* client, void *data, size_t len)
+static void onHueData(void* arg, AsyncClient* client, void *data, size_t len)
 {
   if (!len) return;
   char* str = (char*)data;

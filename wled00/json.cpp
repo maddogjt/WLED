@@ -1,12 +1,13 @@
 #include "wled.h"
 
 #include "palettes.h"
+#include "utils/temp_buffer.h"
 
 /*
  * JSON API (De)serialization
  */
 
-void deserializeSegment(JsonObject elem, byte it, byte presetId)
+static void deserializeSegment(JsonObject elem, byte it, byte presetId)
 {
   byte id = elem["id"] | it;
   if (id >= strip.getMaxSegments()) return;
@@ -324,7 +325,7 @@ bool deserializeState(JsonObject root, byte callMode, byte presetId)
   return stateResponse;
 }
 
-void serializeSegment(JsonObject& root, WS2812FX::Segment& seg, byte id, bool forPreset, bool segmentBounds)
+static void serializeSegment(JsonObject &root, WS2812FX::Segment &seg, byte id, bool forPreset, bool segmentBounds)
 {
 	root["id"] = id;
   if (segmentBounds) {
@@ -339,7 +340,7 @@ void serializeSegment(JsonObject& root, WS2812FX::Segment& seg, byte id, bool fo
   byte segbri = seg.opacity;
   root["bri"] = (segbri) ? segbri : 255;
 
-  char colstr[70]; colstr[0] = '['; colstr[1] = '\0'; //max len 68 (5 chan, all 255)
+  JsonArray colors = root.createNestedArray("col");
 
 	for (uint8_t i = 0; i < 3; i++)
 	{
@@ -353,14 +354,14 @@ void serializeSegment(JsonObject& root, WS2812FX::Segment& seg, byte id, bool fo
       segcol[2] = (byte)(seg.colors[i]);       segcol[3] = (byte)(seg.colors[i] >> 24);
     }
 
-    char tmpcol[22];
-    if (strip.isRgbw) sprintf_P(tmpcol, PSTR("[%u,%u,%u,%u]"), c[0], c[1], c[2], c[3]);
-    else              sprintf_P(tmpcol, PSTR("[%u,%u,%u]"),   c[0], c[1], c[2]);
-
-    strcat(colstr, i<2 ? strcat(tmpcol,",") : tmpcol);
+    JsonArray color = colors.createNestedArray();
+    color.add(c[0]);
+    color.add(c[1]);
+    color.add(c[2]);
+    if (strip.isRgbw) {
+      color.add(c[3]);
+    }
 	}
-  strcat(colstr,"]");
-  root["col"] = serialized(colstr);
 
 	root["fx"]  = seg.mode;
 	root[F("sx")]  = seg.speed;
@@ -380,7 +381,8 @@ void serializeState(JsonObject root, bool forPreset, bool includeBri, bool segme
   }
 
   if (!forPreset) {
-    if (errorFlag) root[F("error")] = errorFlag;
+    if (errorFlag != Err::NONE)
+      root[F("error")] = (byte)errorFlag;
 
     root[F("ps")] = currentPreset;
     root[F("pl")] = currentPlaylist;
@@ -741,14 +743,29 @@ void serializeNodes(JsonObject root)
 
 void serveJson(AsyncWebServerRequest* request)
 {
-  byte subJson = 0;
-  const String& url = request->url();
-  if      (url.indexOf("state") > 0) subJson = 1;
-  else if (url.indexOf("info")  > 0) subJson = 2;
-  else if (url.indexOf("si")    > 0) subJson = 3;
-  else if (url.indexOf("nodes") > 0) subJson = 4;
-  else if (url.indexOf("palx")  > 0) subJson = 5;
-  else if (url.indexOf("live")  > 0) {
+  enum class SubPage
+  {
+    Unknown,
+    State,
+    Info,
+    StateInfo,
+    Nodes,
+    Palettes,
+  };
+  SubPage subJson = SubPage::Unknown;
+  const String &url = request->url();
+  if (url.indexOf("state") > 0)
+    subJson = SubPage::State;
+  else if (url.indexOf("info") > 0)
+    subJson = SubPage::Info;
+  else if (url.indexOf("si") > 0)
+    subJson = SubPage::StateInfo;
+  else if (url.indexOf("nodes") > 0)
+    subJson = SubPage::Nodes;
+  else if (url.indexOf("palx") > 0)
+    subJson = SubPage::Palettes;
+  else if (url.indexOf("live") > 0)
+  {
     serveLiveLeds(request);
     return;
   }
@@ -773,20 +790,20 @@ void serveJson(AsyncWebServerRequest* request)
 
   switch (subJson)
   {
-    case 1: //state
+    case SubPage::State:
       serializeState(doc); break;
-    case 2: //info
+    case SubPage::Info: //info
       serializeInfo(doc); break;
-    case 4: //node list
+    case SubPage::Nodes: //node list
       serializeNodes(doc); break;
-    case 5: //palettes
+    case SubPage::Palettes: //palettes
       serializePalettes(doc, request); break;
     default: //all
       JsonObject state = doc.createNestedObject("state");
       serializeState(state);
       JsonObject info = doc.createNestedObject("info");
       serializeInfo(info);
-      if (subJson != 3)
+      if (subJson != SubPage::StateInfo)
       {
         doc[F("effects")]  = serialized((const __FlashStringHelper*)JSON_mode_names);
         doc[F("palettes")] = serialized((const __FlashStringHelper*)JSON_palette_names);
@@ -815,24 +832,22 @@ bool serveLiveLeds(AsyncWebServerRequest* request, uint32_t wsClient)
   uint16_t used = ledCount;
   uint16_t n = (used -1) /MAX_LIVE_LEDS +1; //only serve every n'th LED if count over MAX_LIVE_LEDS
   char buffer[2000];
-  strcpy_P(buffer, PSTR("{\"leds\":["));
-  obuf = buffer;
-  olen = 9;
+  TempBuffer tempBuf(buffer, 2000);
+  tempBuf.append(PSTR("{\"leds\":["));
 
   for (uint16_t i= 0; i < used; i += n)
   {
-    olen += sprintf(obuf + olen, "\"%06X\",", strip.getPixelColor(i) & 0xFFFFFF);
+    tempBuf.printf("\"%06X\",", strip.getPixelColor(i) & 0xFFFFFF);
   }
-  olen -= 1;
-  oappend((const char*)F("],\"n\":"));
-  oappendi(n);
-  oappend("}");
+  tempBuf.append((const char *)F("],\"n\":"));
+  tempBuf.appendi(n);
+  tempBuf.append("}");
   if (request) {
     request->send(200, "application/json", buffer);
   }
   #ifdef WLED_ENABLE_WEBSOCKETS
   else {
-    wsc->text(obuf, olen);
+    wsc->text(buffer, tempBuf.length());
   }
   #endif
   return true;

@@ -5,6 +5,8 @@
  * The structure of the JSON is not to be considered an official API and may change without notice.
  */
 
+static bool deserializeConfigSec();
+
 //simple macro for ArduinoJSON's or syntax
 #define CJSON(a,b) a = b | a
 
@@ -724,7 +726,7 @@ void serializeConfig() {
 }
 
 //settings in /wsec.json, not accessible via webserver, for passwords and tokens
-bool deserializeConfigSec() {
+static bool deserializeConfigSec() {
   DEBUG_PRINTLN(F("Reading settings from /wsec.json..."));
 
   DynamicJsonDocument doc(JSON_BUFFER_SIZE);

@@ -208,16 +208,19 @@
 #define PL_OPTION_SHUFFLE      0x01
 
 // WLED Error modes
-#define ERR_NONE         0  // All good :)
-#define ERR_EEP_COMMIT   2  // Could not commit to EEPROM (wrong flash layout?)
-#define ERR_JSON         9  // JSON parsing failed (input too large?)
-#define ERR_FS_BEGIN    10  // Could not init filesystem (no partition?)
-#define ERR_FS_QUOTA    11  // The FS is full or the maximum file size is reached
-#define ERR_FS_PLOAD    12  // It was attempted to load a preset that does not exist
-#define ERR_FS_GENERAL  19  // A general unspecified filesystem error occured
-#define ERR_OVERTEMP    30  // An attached temperature sensor has measured above threshold temperature (not implemented)
-#define ERR_OVERCURRENT 31  // An attached current sensor has measured a current above the threshold (not implemented)
-#define ERR_UNDERVOLT   32  // An attached voltmeter has measured a voltage below the threshold (not implemented)
+enum class Err
+{
+  NONE        =  0,  // All good :)
+  EEP_COMMIT  =  2,  // Could not commit to EEPROM (wrong flash layout?)
+  JSON        =  9,  // JSON parsing failed (input too large?)
+  FS_BEGIN    = 10,  // Could not init filesystem (no partition?)
+  FS_QUOTA    = 11,  // The FS is full or the maximum file size is reached
+  FS_PLOAD    = 12,  // It was attempted to load a preset that does not exist
+  FS_GENERAL  = 19,  // A general unspecified filesystem error occured
+  OVERTEMP    = 30,  // An attached temperature sensor has measured above threshold temperature (not implemented)
+  OVERCURRENT = 31,  // An attached current sensor has measured a current above the threshold (not implemented)
+  UNDERVOLT   = 32,  // An attached voltmeter has measured a voltage below the threshold (not implemented)
+};
 
 //Timer mode types
 #define NL_MODE_SET               0            //After nightlight time elapsed, set to target brightness

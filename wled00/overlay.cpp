@@ -3,7 +3,11 @@
 /*
  * Used to draw clock overlays over the strip
  */
- 
+
+static void _overlayCronixie();
+static void _drawOverlayCronixie();
+static void _overlayAnalogCountdown();
+
 void initCronixie()
 {
   if (overlayCurrent == 3 && dP[0] == 255) //if dP[0] is 255, cronixie is not yet init'ed
@@ -28,7 +32,7 @@ void handleOverlays()
 }
 
 
-void _overlayAnalogClock()
+static void _overlayAnalogClock()
 {
   int overlaySize = overlayMax - overlayMin +1;
   if (countdownMode)
@@ -71,7 +75,7 @@ void _overlayAnalogClock()
 }
 
 
-void _overlayAnalogCountdown()
+static void _overlayAnalogCountdown()
 {
   if ((unsigned long)toki.second() < countdownTime)
   {
@@ -129,7 +133,7 @@ void handleOverlayDraw() {
 #ifndef WLED_DISABLE_CRONIXIE
 byte _digitOut[6] = {10,10,10,10,10,10};
  
-byte getSameCodeLength(char code, int index, char const cronixieDisplay[])
+static byte getSameCodeLength(char code, int index, char const cronixieDisplay[])
 {
   byte counter = 0;
   
@@ -267,7 +271,7 @@ void setCronixie()
   _overlayCronixie(); //refresh
 }
 
-void _overlayCronixie()
+static void _overlayCronixie()
 {
   byte h = hour(localTime);
   byte h0 = h;
@@ -332,7 +336,7 @@ void _overlayCronixie()
   }
 }
 
-void _drawOverlayCronixie()
+static void _drawOverlayCronixie()
 {
   byte offsets[] = {5, 0, 6, 1, 7, 2, 8, 3, 9, 4};
   
@@ -361,6 +365,6 @@ void _drawOverlayCronixie()
 #else // WLED_DISABLE_CRONIXIE
 byte getSameCodeLength(char code, int index, char const cronixieDisplay[]) {}
 void setCronixie() {}
-void _overlayCronixie() {}
-void _drawOverlayCronixie() {}
+static void _overlayCronixie() {}
+static void _drawOverlayCronixie() {}
 #endif

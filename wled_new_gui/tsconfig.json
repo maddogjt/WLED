@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "sourceMap": true,
+    "noImplicitAny": true,
+    "removeComments": false,
+    "preserveConstEnums": true,
+    "target": "es2017",
+    "module": "es2015",
+    "outDir": "./dist",
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "allowJs": true,
+    "isolatedModules": true,
+    "lib": ["es2017", "dom"],
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "baseUrl": "src",
+    "paths": {
+      "color-picker/*": ["controls/color-picker/*"],
+      "color-picker": ["controls/color-picker"],
+      "predux": ["libraries/predux"],
+      "predux/*": ["libraries/predux/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist/**/*"]
+}

@@ -8,6 +8,12 @@
 //#define WLED_DEBUG_NTP
 #define NTP_SYNC_INTERVAL 42000UL //Get fresh NTP time about twice per day
 
+static void handleNetworkTime();
+static void sendNTPPacket();
+static bool checkNTPResponse();
+static bool checkCountdown();
+static void checkTimers();
+
 Timezone* tz;
 
 #define TZ_UTC                  0
@@ -155,7 +161,7 @@ void handleTime() {
   }
 }
 
-void handleNetworkTime()
+static void handleNetworkTime()
 {
   if (ntpEnabled && ntpConnected && millis() - ntpLastSyncTime > (1000*NTP_SYNC_INTERVAL) && WLED_CONNECTED)
   {
@@ -171,7 +177,7 @@ void handleNetworkTime()
   }
 }
 
-void sendNTPPacket()
+static void sendNTPPacket()
 {
   if (!ntpServerIP.fromString(ntpServerName)) //see if server is IP or domain
   {
@@ -201,7 +207,7 @@ void sendNTPPacket()
   ntpUdp.endPacket();
 }
 
-bool checkNTPResponse()
+static bool checkNTPResponse()
 {
   int cb = ntpUdp.parsePacket();
   if (!cb) return false;
@@ -277,7 +283,7 @@ void setCountdown()
 }
 
 //returns true if countdown just over
-bool checkCountdown()
+static bool checkCountdown()
 {
   unsigned long n = toki.second();
   if (countdownMode) localTime = countdownTime - n + utcOffsetSecs;
@@ -293,14 +299,14 @@ bool checkCountdown()
   return false;
 }
 
-byte weekdayMondayFirst()
+static byte weekdayMondayFirst()
 {
   byte wd = weekday(localTime) -1;
   if (wd == 0) wd = 7;
   return wd;
 }
 
-void checkTimers()
+static void checkTimers()
 {
   if (lastTimerMinute != minute(localTime)) //only check once a new minute begins
   {

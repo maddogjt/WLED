@@ -20,7 +20,16 @@ uint8_t lastRepeatableValue = 0;
 uint16_t irTimesRepeated = 0;
 uint8_t lastIR6ColourIdx = 0;
 
-
+static void decodeIR24(uint32_t code);
+static void decodeIR24OLD(uint32_t code);
+static void decodeIR24CT(uint32_t code);
+static void decodeIR40(uint32_t code);
+static void decodeIR44(uint32_t code);
+static void decodeIR21(uint32_t code);
+static void decodeIR6(uint32_t code);
+static void decodeIR9(uint32_t code);
+static void decodeIRJson(uint32_t code);
+static void applyRepeatActions();
 // brightnessSteps: a static array of brightness levels following a geometric
 // progression.  Can be generated from the following Python, adjusting the
 // arbitrary 4.5 value to taste:
@@ -79,7 +88,7 @@ void presetFallback(uint8_t presetID, uint8_t effectID, uint8_t paletteID)
 
 //Add what your custom IR codes should trigger here. Guide: https://github.com/Aircoookie/WLED/wiki/Infrared-Control
 //IR codes themselves can be defined directly after "case" or in "ir_codes.h"
-bool decodeIRCustom(uint32_t code)
+static bool decodeIRCustom(uint32_t code)
 {
   switch (code)
   {
@@ -93,7 +102,7 @@ bool decodeIRCustom(uint32_t code)
   return true;
 }
 
-void relativeChange(byte* property, int8_t amount, byte lowerBoundary, byte higherBoundary)
+static void relativeChange(byte* property, int8_t amount, byte lowerBoundary = 0, byte higherBoundary = 0xFF)
 {
   int16_t new_val = (int16_t) *property + amount;
   if (new_val > higherBoundary) new_val = higherBoundary;
@@ -186,7 +195,7 @@ void decodeIR(uint32_t code)
   colorUpdated(CALL_MODE_BUTTON); //for notifier, IR is considered a button input
 }
 
-void applyRepeatActions(){
+static void applyRepeatActions(){
   
     if (lastRepeatableAction == ACTION_BRIGHT_UP)
     { 
@@ -235,7 +244,7 @@ void applyRepeatActions(){
     }
 }
 
-void decodeIR24(uint32_t code)
+static void decodeIR24(uint32_t code)
 {
   switch (code) {
     case IR24_BRIGHTER  : incBrightness();                  break;
@@ -267,7 +276,7 @@ void decodeIR24(uint32_t code)
   lastValidCode = code;
 }
 
-void decodeIR24OLD(uint32_t code)
+static void decodeIR24OLD(uint32_t code)
 {
   switch (code) {
     case IR24_OLD_BRIGHTER  : incBrightness();                     break;
@@ -299,7 +308,7 @@ void decodeIR24OLD(uint32_t code)
   lastValidCode = code;
 }
 
-void decodeIR24CT(uint32_t code)
+static void decodeIR24CT(uint32_t code)
 {
   switch (code) {
     case IR24_CT_BRIGHTER   : incBrightness();                     break;
@@ -333,7 +342,7 @@ void decodeIR24CT(uint32_t code)
   lastValidCode = code;
 }
 
-void decodeIR40(uint32_t code)
+static void decodeIR40(uint32_t code)
 {
   switch (code) {
     case IR40_BPLUS        : incBrightness();                                            break;
@@ -390,7 +399,7 @@ void decodeIR40(uint32_t code)
   lastValidCode = code;
 }
 
-void decodeIR44(uint32_t code)
+static void decodeIR44(uint32_t code)
 {
   switch (code) {
     case IR44_BPLUS       : incBrightness();                                            break;
@@ -453,7 +462,7 @@ void decodeIR44(uint32_t code)
   lastValidCode = code;
 }
 
-void decodeIR21(uint32_t code)
+static void decodeIR21(uint32_t code)
 {
     switch (code) {
     case IR21_BRIGHTER:  incBrightness();                  break;
@@ -482,7 +491,7 @@ void decodeIR21(uint32_t code)
     lastValidCode = code;
 }
 
-void decodeIR6(uint32_t code)
+static void decodeIR6(uint32_t code)
 {
   switch (code) {
     case IR6_POWER: toggleOnOff();                                          break;
@@ -514,7 +523,7 @@ void decodeIR6(uint32_t code)
   lastValidCode = code;
 }
 
-void decodeIR9(uint32_t code)
+static void decodeIR9(uint32_t code)
 {
   switch (code) {
     case IR9_POWER      : toggleOnOff();  break;
@@ -557,7 +566,7 @@ Sample:
                "label": "Preset 1, fallback to Saw - Party if not found"},
 }
 */
-void decodeIRJson(uint32_t code) 
+static void decodeIRJson(uint32_t code) 
 {
   char objKey[10];
   const char* cmd;
@@ -568,10 +577,10 @@ void decodeIRJson(uint32_t code)
 
   sprintf(objKey, "\"0x%X\":", code);
 
-  errorFlag = readObjectFromFile("/ir.json", objKey, &irDoc) ? ERR_NONE : ERR_FS_PLOAD;
+  errorFlag = readObjectFromFile("/ir.json", objKey, &irDoc) ? Err::NONE : Err::FS_PLOAD;
   fdo = irDoc.as<JsonObject>();
   lastValidCode = 0;
-  if (!errorFlag) 
+  if (errorFlag == Err::NONE) 
   {
     cmd = fdo["cmd"];
     cmdStr = String(cmd);

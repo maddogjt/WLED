@@ -1,0 +1,7 @@
+{
+  "baseurl": "https://mydomain",
+  "imgUrl": "https://thirdserver",
+  "dest": "try3/2021/wled_new_gui",
+  "port": "9001",
+  "upload": true
+}

@@ -136,7 +136,6 @@ using PSRAMDynamicJsonDocument = BasicJsonDocument<PSRAM_Allocator>;
 
 #include "fcn_declare.h"
 #include "html_ui.h"
-#include "html_settings.h"
 #include "html_other.h"
 #include "FX.h"
 #include "ir_codes.h"
@@ -520,7 +519,6 @@ WLED_GLOBAL uint16_t tpmPayloadFrameSize _INIT(0);
 WLED_GLOBAL unsigned long lastMqttReconnectAttempt _INIT(0);
 WLED_GLOBAL unsigned long lastInterfaceUpdate _INIT(0);
 WLED_GLOBAL byte interfaceUpdateCallMode _INIT(CALL_MODE_INIT);
-WLED_GLOBAL char mqttStatusTopic[40] _INIT("");        // this must be global because of async handlers
 
 // alexa udp
 WLED_GLOBAL String escapedMac;
@@ -546,10 +544,6 @@ WLED_GLOBAL time_t sunrise _INIT(0);
 WLED_GLOBAL time_t sunset _INIT(0);
 WLED_GLOBAL Toki toki _INIT(Toki());
 
-// Temp buffer
-WLED_GLOBAL char* obuf;
-WLED_GLOBAL uint16_t olen _INIT(0);
-
 // General filesystem
 WLED_GLOBAL size_t fsBytesUsed _INIT(0);
 WLED_GLOBAL size_t fsBytesTotal _INIT(0);
@@ -560,7 +554,7 @@ WLED_GLOBAL bool doCloseFile _INIT(false);
 // presets
 WLED_GLOBAL int16_t currentPreset _INIT(-1);
 
-WLED_GLOBAL byte errorFlag _INIT(0);
+WLED_GLOBAL Err errorFlag _INIT(Err::NONE);
 
 WLED_GLOBAL String messageHead, messageSub;
 WLED_GLOBAL byte optionType;
@@ -637,11 +631,6 @@ WLED_GLOBAL UsermodManager usermods _INIT(UsermodManager());
 #endif
 #define WLED_WIFI_CONFIGURED (strlen(clientSSID) >= 1 && strcmp(clientSSID, DEFAULT_CLIENT_SSID) != 0)
 #define WLED_MQTT_CONNECTED (mqtt != nullptr && mqtt->connected())
-
-// append new c string to temp buffer efficiently
-bool oappend(const char* txt);
-// append new number to temp buffer efficiently
-bool oappendi(int i);
 
 class WLED {
 public:

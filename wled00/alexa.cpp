@@ -10,7 +10,7 @@
 #include "src/dependencies/espalexa/EspalexaDevice.h"
 
 #ifndef WLED_DISABLE_ALEXA
-void onAlexaChange(EspalexaDevice* dev);
+static void onAlexaChange(EspalexaDevice* dev);
 
 void alexaInit()
 {
@@ -33,7 +33,7 @@ void handleAlexa()
   espalexa.loop();
 }
 
-void onAlexaChange(EspalexaDevice* dev)
+static void onAlexaChange(EspalexaDevice* dev)
 {
   EspalexaDeviceProperty m = espalexaDevice->getLastChangedProperty();
   

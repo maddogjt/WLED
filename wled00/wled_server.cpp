@@ -1,11 +1,16 @@
 #include "wled.h"
+#include "webserver/serve_index.h"
+#include "webserver/serve_message.h"
+#include "webserver/serve_dmx.h"
+#include "webserver/serve_settings.h"
+#include "webserver/serve_new_index.h"
 
 /*
  * Integrated HTTP web server page declarations
  */
 
 //Is this an IP?
-bool isIp(String str) {
+static bool isIp(String str) {
   for (size_t i = 0; i < str.length(); i++) {
     int c = str.charAt(i);
     if (c != '.' && (c < '0' || c > '9')) {
@@ -31,7 +36,7 @@ void handleUpload(AsyncWebServerRequest *request, const String& filename, size_t
   }
 }
 
-bool captivePortal(AsyncWebServerRequest *request)
+static bool captivePortal(AsyncWebServerRequest *request)
 {
   if (ON_STA_FILTER(request)) return false; //only serve captive in AP mode
   String hostH;
@@ -46,6 +51,18 @@ bool captivePortal(AsyncWebServerRequest *request)
     return true;
   }
   return false;
+}
+
+static void serveIndexOrWelcome(AsyncWebServerRequest *request)
+{
+  if (!showWelcomePage)
+  {
+    serveIndex(request);
+  }
+  else
+  {
+    serveSettings(request, false);
+  }
 }
 
 void initServer()
@@ -67,7 +84,7 @@ void initServer()
   
   //settings page
   server.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request){
-    serveSettings(request);
+    serveSettings(request, false);
   });
   
   server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -82,7 +99,7 @@ void initServer()
   });
   
   server.on("/welcome", HTTP_GET, [](AsyncWebServerRequest *request){
-    serveSettings(request);
+    serveSettings(request, false);
   });
   
   server.on("/reset", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -185,7 +202,9 @@ void initServer()
     server.on("/update", HTTP_POST, [](AsyncWebServerRequest *request){
       if (Update.hasError())
       {
-        serveMessage(request, 500, F("Failed updating firmware!"), F("Please check your file and retry!"), 254); return;
+        String ec(F("Please check your file and retry! ec: "));
+        ec.concat(Update.getError());
+        serveMessage(request, 500, F("Failed updating firmware!"), ec, 254); return;
       }
       serveMessage(request, 200, F("Successfully updated firmware!"), F("Please wait while the module reboots..."), 131); 
       doReboot = true;
@@ -195,7 +214,7 @@ void initServer()
         #ifdef ESP8266
         Update.runAsync(true);
         #endif
-        Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000);
+        Update.begin(UPDATE_SIZE_UNKNOWN);
       }
       if(!Update.hasError()) Update.write(data, len);
       if(final){
@@ -237,6 +256,10 @@ void initServer()
     serveIndexOrWelcome(request);
   });
 
+  server.on("/new", HTTP_GET, [](AsyncWebServerRequest *request) {
+    serveNewIndex(request);
+  });
+
   #ifdef WLED_ENABLE_WEBSOCKETS
   server.addHandler(&ws);
   #endif
@@ -263,205 +286,4 @@ void initServer()
     if(handleFileRead(request, request->url())) return;
     request->send_P(404, "text/html", PAGE_404);
   });
-}
-
-
-void serveIndexOrWelcome(AsyncWebServerRequest *request)
-{
-  if (!showWelcomePage){
-    serveIndex(request);
-  } else {
-    serveSettings(request);
-  }
-}
-
-bool handleIfNoneMatchCacheHeader(AsyncWebServerRequest* request)
-{
-  AsyncWebHeader* header = request->getHeader("If-None-Match");
-  if (header && header->value() == String(VERSION)) {
-    request->send(304);
-    return true;
-  }
-  return false;
-}
-
-void setStaticContentCacheHeaders(AsyncWebServerResponse *response)
-{
-  #ifndef WLED_DEBUG
-  //this header name is misleading, "no-cache" will not disable cache,
-  //it just revalidates on every load using the "If-None-Match" header with the last ETag value
-  response->addHeader(F("Cache-Control"),"no-cache");
-  #else
-  response->addHeader(F("Cache-Control"),"no-store,max-age=0"); // prevent caching if debug build
-  #endif
-  response->addHeader(F("ETag"), String(VERSION));
-}
-
-void serveIndex(AsyncWebServerRequest* request)
-{
-  if (handleFileRead(request, "/index.htm")) return;
-
-  if (handleIfNoneMatchCacheHeader(request)) return;
-
-  AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", PAGE_index, PAGE_index_L);
-
-  response->addHeader(F("Content-Encoding"),"gzip");
-  setStaticContentCacheHeaders(response);
-  request->send(response);
-}
-
-
-String msgProcessor(const String& var)
-{
-  if (var == "MSG") {
-    String messageBody = messageHead;
-    messageBody += F("</h2>");
-    messageBody += messageSub;
-    uint32_t optt = optionType;
-
-    if (optt < 60) //redirect to settings after optionType seconds
-    {
-      messageBody += F("<script>setTimeout(RS,");
-      messageBody +=String(optt*1000);
-      messageBody += F(")</script>");
-    } else if (optt < 120) //redirect back after optionType-60 seconds, unused
-    {
-      //messageBody += "<script>setTimeout(B," + String((optt-60)*1000) + ")</script>";
-    } else if (optt < 180) //reload parent after optionType-120 seconds
-    {
-      messageBody += F("<script>setTimeout(RP,");
-      messageBody += String((optt-120)*1000);
-      messageBody += F(")</script>");
-    } else if (optt == 253)
-    {
-      messageBody += F("<br><br><form action=/settings><button class=\"bt\" type=submit>Back</button></form>"); //button to settings
-    } else if (optt == 254)
-    {
-      messageBody += F("<br><br><button type=\"button\" class=\"bt\" onclick=\"B()\">Back</button>");
-    }
-    return messageBody;
-  }
-  return String();
-}
-
-
-void serveMessage(AsyncWebServerRequest* request, uint16_t code, const String& headl, const String& subl, byte optionT)
-{
-  messageHead = headl;
-  messageSub = subl;
-  optionType = optionT;
-  
-  request->send_P(code, "text/html", PAGE_msg, msgProcessor);
-}
-
-
-String settingsProcessor(const String& var)
-{
-  if (var == "CSS") {
-    char buf[2048];
-    buf[0] = 0;
-    getSettingsJS(optionType, buf);
-    return String(buf);
-  }
-  
-  #ifdef WLED_ENABLE_DMX
-
-  if (var == "DMXMENU") {
-    return String(F("<form action=/settings/dmx><button type=submit>DMX Output</button></form>"));
-  }
-  
-  #endif
-  if (var == "SCSS") return String(FPSTR(PAGE_settingsCss));
-  return String();
-}
-
-String dmxProcessor(const String& var)
-{
-  String mapJS;
-  #ifdef WLED_ENABLE_DMX
-    if (var == "DMXVARS") {
-      mapJS += "\nCN=" + String(DMXChannels) + ";\n";
-      mapJS += "CS=" + String(DMXStart) + ";\n";
-      mapJS += "CG=" + String(DMXGap) + ";\n";
-      mapJS += "LC=" + String(ledCount) + ";\n";
-      mapJS += "var CH=[";
-      for (int i=0;i<15;i++) {
-        mapJS += String(DMXFixtureMap[i]) + ",";
-      }
-      mapJS += "0];";
-    }
-  #endif
-  
-  return mapJS;
-}
-
-
-void serveSettings(AsyncWebServerRequest* request, bool post)
-{
-  byte subPage = 0;
-  const String& url = request->url();
-  if (url.indexOf("sett") >= 0) 
-  {
-    if      (url.indexOf("wifi") > 0) subPage = 1;
-    else if (url.indexOf("leds") > 0) subPage = 2;
-    else if (url.indexOf("ui")   > 0) subPage = 3;
-    else if (url.indexOf("sync") > 0) subPage = 4;
-    else if (url.indexOf("time") > 0) subPage = 5;
-    else if (url.indexOf("sec")  > 0) subPage = 6;
-    #ifdef WLED_ENABLE_DMX // include only if DMX is enabled
-    else if (url.indexOf("dmx")  > 0) subPage = 7;
-    #endif
-    else if (url.indexOf("um")  > 0) subPage = 8;
-  } else subPage = 255; //welcome page
-
-  if (subPage == 1 && wifiLock && otaLock)
-  {
-    serveMessage(request, 500, "Access Denied", F("Please unlock OTA in security settings!"), 254); return;
-  }
-
-  if (post) { //settings/set POST request, saving
-    if (subPage != 1 || !(wifiLock && otaLock)) handleSettingsSet(request, subPage);
-
-    char s[32];
-    char s2[45] = "";
-
-    switch (subPage) {
-      case 1: strcpy_P(s, PSTR("WiFi")); strcpy_P(s2, PSTR("Please connect to the new IP (if changed)")); forceReconnect = true; break;
-      case 2: strcpy_P(s, PSTR("LED")); break;
-      case 3: strcpy_P(s, PSTR("UI")); break;
-      case 4: strcpy_P(s, PSTR("Sync")); break;
-      case 5: strcpy_P(s, PSTR("Time")); break;
-      case 6: strcpy_P(s, PSTR("Security")); strcpy_P(s2, PSTR("Rebooting, please wait ~10 seconds...")); break;
-      case 7: strcpy_P(s, PSTR("DMX")); break;
-      case 8: strcpy_P(s, PSTR("Usermods")); break;
-    }
-
-    strcat_P(s, PSTR(" settings saved."));
-    if (!s2[0]) strcpy_P(s2, PSTR("Redirecting..."));
-
-    if (!doReboot) serveMessage(request, 200, s, s2, (subPage == 1 || subPage == 6) ? 129 : 1);
-    if (subPage == 6) doReboot = true;
-
-    return;
-  }
-  
-  #ifdef WLED_DISABLE_MOBILE_UI //disable welcome page if not enough storage
-   if (subPage == 255) {serveIndex(request); return;}
-  #endif
-
-  optionType = subPage;
-  
-  switch (subPage)
-  {
-    case 1:   request->send_P(200, "text/html", PAGE_settings_wifi, settingsProcessor); break;
-    case 2:   request->send_P(200, "text/html", PAGE_settings_leds, settingsProcessor); break;
-    case 3:   request->send_P(200, "text/html", PAGE_settings_ui  , settingsProcessor); break;
-    case 4:   request->send_P(200, "text/html", PAGE_settings_sync, settingsProcessor); break;
-    case 5:   request->send_P(200, "text/html", PAGE_settings_time, settingsProcessor); break;
-    case 6:   request->send_P(200, "text/html", PAGE_settings_sec , settingsProcessor); break;
-    case 7:   request->send_P(200, "text/html", PAGE_settings_dmx , settingsProcessor); break;
-    case 8:   request->send_P(200, "text/html", PAGE_settings_um  , settingsProcessor); break;
-    case 255: request->send_P(200, "text/html", PAGE_welcome); break;
-    default:  request->send_P(200, "text/html", PAGE_settings     , settingsProcessor); 
-  }
 }
