@@ -31,6 +31,11 @@ export function CheckInput(
   );
 }
 
+export const convertInvert = {
+  to: (v: boolean): boolean => !v,
+  from: (v: boolean): boolean => !v
+}
+
 export function ConvertCheckInput<T>(
   props: Prop<T> &
     JSX.HTMLAttributes<HTMLInputElement> & {
@@ -55,7 +60,7 @@ export function TextInput(
     <input
       value={props.pvalue}
       {...props}
-      class={`m-1 ${props.class ?? ''}`}
+      class={` ${props.class ?? ''}`}
       onChange={(e) => props.set(e.currentTarget.value)}
     />
   );
@@ -69,7 +74,7 @@ export function NumInput(
       value={props.pvalue}
       type="number"
       {...props}
-      class={`m-1 ${props.class ?? ''}`}
+      class={`${props.class ?? ''}`}
       onChange={(e) => props.set(e.currentTarget.valueAsNumber)}
     />
   );
@@ -88,33 +93,37 @@ export function IpAddress(props: Prop<number[]> | Prop<number[] | undefined>): J
         type="number"
         min="0"
         max="255"
+        class="ip"
         required
         value={addr[0]}
         onChange={(e) => update(0, e.currentTarget.valueAsNumber)}
-      />{' '}
-      .
+      />
+      {' . '}
       <input
         type="number"
         min="0"
         max="255"
+        class="ip"
         required
         value={addr[1]}
         onChange={(e) => update(1, e.currentTarget.valueAsNumber)}
-      />{' '}
-      .
+      />
+      {' . '}
       <input
         type="number"
         min="0"
         max="255"
+        class="ip"
         required
         value={addr[2]}
         onChange={(e) => update(2, e.currentTarget.valueAsNumber)}
-      />{' '}
-      .
+      />
+      {' . '}
       <input
         type="number"
         min="0"
         max="255"
+        class="ip"
         required
         value={addr[3]}
         onChange={(e) => update(3, e.currentTarget.valueAsNumber)}

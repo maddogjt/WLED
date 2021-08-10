@@ -3,7 +3,17 @@ import { useSelector } from 'predux/preact';
 import { selectSettings } from '../features/settings';
 import { selectInfo } from '../features/wledState';
 import { useStateFromProps } from '../welcome/useStateFromProps';
-import { CheckInput, Desc, IpAddress, NumInput, Select, TextInput, wikiUrl } from './Controls';
+import {
+  CheckInput,
+  ConvertCheckInput,
+  convertInvert,
+  Desc,
+  IpAddress,
+  NumInput,
+  Select,
+  TextInput,
+  wikiUrl,
+} from './Controls';
 import { bindGetPathProp } from './pathProps';
 
 export function SettingsWifi(): JSX.Element {
@@ -46,9 +56,9 @@ export function SettingsWifi(): JSX.Element {
       <IpAddress {...getProp('nw.ins.0.sn')} />
       <div>mDNS address (leave empty for no mDNS):</div>
       <div>
-        http://
+        {'http:// '}
         <TextInput maxLength={32} {...getProp('id.mdns')} />
-        .local
+        {' .local'}
       </div>
       <div>Client IP: {info.ip ?? 'Not connected'}</div>
       <h3>Configure Access Point</h3>
@@ -68,7 +78,7 @@ export function SettingsWifi(): JSX.Element {
         {...getProp('ap.psk')}
       />
       <Desc desc="Access Point WiFi channel: ">
-        <NumInput min="1" max="13" required {...getProp('ap.chan')} />
+        <NumInput min="1" max="13" required class="xs" {...getProp('ap.chan')} />
       </Desc>
       <Desc desc="AP opens: ">
         <Select {...getProp('ap.behav')}>
@@ -81,7 +91,7 @@ export function SettingsWifi(): JSX.Element {
       <div>AP IP: {settings.ap.ip.join('.') ?? 'Not Active'}</div>
       <h3>Experimental</h3>
       <Desc desc="Disable WiFi sleep: ">
-        <CheckInput {...getProp('wifi.sleep')} />
+        <ConvertCheckInput {...getProp('wifi.sleep')} {...convertInvert} />
       </Desc>
       <i>
         Can help with connectivity issues.

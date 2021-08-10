@@ -1024,12 +1024,38 @@ input[type='text'].search {
   font-size: initial;
   line-height: 200%;
 
+  hr {
+    all: revert;
+    border: 1px inset #666;
+    opacity: revert;
+    background-color: revert;
+
+    &.partial {
+      width: 260px;
+    }
+  }
+
   br {
     line-height: 200%;
   }
 
-  h2, h3 {
-    @extend  .my-4;
+  h2,
+  h3 {
+    all: revert;
+  }
+
+  button {
+    all: revert;
+    background: #333;
+    color: #fff;
+    font-family: Verdana, sans-serif;
+    border: 0.3ch solid #333;
+    display: inline-block;
+    font-size: $font-size-base;
+    margin: 12px 8px 8px;
+    padding: 1px 6px;
+    line-height: normal;
+    cursor: pointer;
   }
 
   .settings-list-item {
@@ -1042,27 +1068,13 @@ input[type='text'].search {
     }
   }
 
-  hr {
-    border-color: #666;
-    border: 1px solid #333
-  }
-  button {
-    background: #333;
-    color: #fff;
-    font-family: Verdana, sans-serif;
-    border: 0.3ch solid #333;
-    display: inline-block;
-    font-size: $font-size-base;
-    margin: 8px;
-    margin-top: 12px;
-    cursor: pointer;
-  }
   .helpB {
     text-align: left;
     position: absolute;
     width: 60px;
   }
   input {
+    all: revert;
     background: #333;
     color: #fff;
     font-family: Verdana, sans-serif;
@@ -1070,8 +1082,30 @@ input[type='text'].search {
   }
   input[type='number'] {
     width: 4em;
+    margin: 2px;
+
+    &.xl {
+      width: 85px;
+    }
+    &.l {
+      width: 63px;
+    }
+    &.m {
+      width: 56px;
+    }
+    &.s {
+      width: 49px;
+    }
+    &.xs {
+      width: 42px;
+    }
+  }
+  input[type='checkbox'] {
+    transform: scale(1.5);
+    margin-right: 10px;
   }
   select {
+    all: revert;
     background: #333;
     color: #fff;
     font-family: Verdana, sans-serif;
@@ -1099,4 +1133,33 @@ input[type='text'].search {
   position: absolute;
   // top: 5px;
   cursor: pointer;
+}
+
+#toasty {
+  opacity: 0;
+  background-color: #444;
+  border-radius: 5px;
+  bottom: 64px;
+  color: #fff;
+  font-size: 17px;
+  padding: 16px;
+  pointer-events: none;
+  position: fixed;
+  text-align: center;
+  z-index: 5;
+  transform: translateX(-50%);
+  max-width: 90%;
+  left: 50%;
+
+  &.show {
+    opacity: 1;
+    background-color: #264;
+    animation: fadein 0.5s, fadein 0.5s 2.5s reverse;
+  }
+
+  &.error {
+    opacity: 1;
+    background-color: #b21;
+    animation: fadein 0.5s, fadein 0.5s 5s reverse;
+  }
 }

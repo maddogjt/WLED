@@ -1,13 +1,22 @@
 import { JSX } from 'preact';
-import { useMemo, useState } from 'preact/hooks';
+import { useMemo, useRef, useState } from 'preact/hooks';
 import { useSelector2 } from 'predux/preact';
 import { selectSettings, Settings } from '../features/settings';
 import { selectInfo } from '../features/wledState';
 import { useStateFromProps } from '../welcome/useStateFromProps';
-import { CheckInput, Desc, NumInput, Select, wikiUrl } from './Controls';
+import {
+  CheckInput,
+  ConvertCheckInput,
+  convertInvert,
+  Desc,
+  NumInput,
+  Select,
+  wikiUrl,
+} from './Controls';
 import { getPathProp, bindGetPathProp, Prop, bindGetPathPropRaw } from './pathProps';
 import { Path, PathType, typedDotProp } from './Accessors';
 import { range } from './utils';
+import { Toast } from './Toast';
 
 interface LEDInfo {
   id: number;
@@ -69,13 +78,14 @@ function LEDButton(
     props.set(toCall(pvalue));
   };
   return (
-    <Desc desc={`Button ${index} pin:`}>
+    <Desc desc={`Button ${index} pin: `}>
       <NumInput
         min={-1}
         max={40}
+        class="xs"
         pvalue={pvalue.pin[0]}
         set={setPin}
-        style={{ color: checkPin(pvalue.pin[0]) ? '#fff' : '#f00', width: '35px' }}
+        style={{ color: checkPin(pvalue.pin[0]) ? '#fff' : '#f00' }}
       />
       &nbsp;
       <Select {...getPathProp(pvalue, newSet, 'type')}>
@@ -83,9 +93,10 @@ function LEDButton(
         <option value="2">Pushbutton</option>
         <option value="3">Push inverted</option>
         <option value="4">Switch</option>
-        <option value="5">Switch inverted</option>
+        <option value="5">PIR Sensor</option>
         <option value="6">Touch</option>
         <option value="7">Analog</option>
+        <option value="8">Analog Inverted</option>
       </Select>
       <span style="cursor: pointer;" class="mx-1" onClick={() => setPin(-1)}>
         &#215;
@@ -159,7 +170,7 @@ function LEDOutput(
             </option>
           ))}
         </Select>
-        &nbsp;Color Order:&nbsp;
+        {'  Color Order: '}
         <Select {...getProp('order')}>
           <option value="0">GRB</option>
           <option value="1">RGB</option>
@@ -170,27 +181,10 @@ function LEDOutput(
         </Select>
       </Desc>
       <Desc desc={ledType.config === 'ClkData' ? 'Data: ' : ledType.pins > 1 ? 'Pins: ' : 'Pin: '}>
-        <NumInput
-          type="number"
-          class="m-1"
-          min="0"
-          max="40"
-          {...getPropRaw('pin.0')}
-          required
-          style="width:35px"
-        />
+        <NumInput type="number" class="xs" min="0" max="33" {...getPropRaw('pin.0')} required />
         {ledType.config === 'ClkData' && <span>Clock:</span>}
         {[...range(1, ledType.pins ?? 1)].map((v: number) => {
-          return (
-            <NumInput
-              key={v}
-              class="m-1"
-              min="0"
-              max="40"
-              style="width:35px"
-              {...getPropRaw(`pin.${v}`)}
-            />
-          );
+          return <NumInput key={v} class="xs" min="0" max="33" {...getPropRaw(`pin.${v}`)} />;
         })}
       </Desc>
       <Desc desc={ledType.config === 'Pins' ? 'Index: ' : 'Start: '}>
@@ -239,8 +233,34 @@ export function SettingsLeds(): JSX.Element {
       ),
     [settings.hw.led.ins]
   );
+  const [toast, setToast] = useState<[boolean, string] | undefined>();
 
   const getProp = bindGetPathProp<Settings>(settings, setSettings);
+  const dataRef = useRef<HTMLInputElement>(null);
+
+  function uploadFile(name: string) {
+    if (!dataRef.current?.files) {
+      return false;
+    }
+    const req = new XMLHttpRequest();
+    req.onreadystatechange = () => {
+      if (req.readyState === 4) {
+        if (req.status === 200) {
+          setToast([false, req.responseText]);
+        } else {
+          setToast([true, req.statusText]);
+        }
+      }
+    };
+    req.open('POST', 'http://192.168.0.211/upload');
+    const formData = new FormData();
+    formData.append('data', dataRef.current.files[0], name);
+    setToast(undefined);
+    req.send(formData);
+
+    dataRef.current.value = '';
+    return false;
+  }
 
   // function enABL() {
   //   var e = gId('able').checked;
@@ -331,6 +351,7 @@ export function SettingsLeds(): JSX.Element {
         <b>{psu}</b>
       </div>
       <div>{psu2}</div>
+      <br />
       <Desc desc="Enable automatic brightness limiter: ">
         <CheckInput
           pvalue={aben}
@@ -343,7 +364,7 @@ export function SettingsLeds(): JSX.Element {
       {aben && (
         <div>
           <Desc desc="Maximum Current: ">
-            <NumInput {...getProp('hw.led.maxpwr')} min="250" max="65000" required /> mA
+            <NumInput class="l" {...getProp('hw.led.maxpwr')} min="250" max="65000" required /> mA
           </Desc>
           {settings.hw.led.maxpwr > 7200 && (
             <div style="color: orange;">
@@ -365,9 +386,10 @@ export function SettingsLeds(): JSX.Element {
               <br />
               If you are using an external power supply, enter its rating.
               <br />
-              (Current estimated usage: {pwr} mA)
+              (Current estimated usage: {pwr}mA)
             </i>
           </div>
+          <br />
           <div>LED voltage (Max. current for a single LED):</div>
           <div>
             <Select
@@ -435,16 +457,16 @@ export function SettingsLeds(): JSX.Element {
           {memPct > 100 && <b> (WARNING: Using over {maxM}B!)</b>} for the best experience!
         </div>
       )}
-      <hr />
+      <hr class="partial" />
       {settings.hw.btn.ins.map((_e, i: number) => {
         return <LEDButton key={i} index={i} checkPin={checkPin} {...getProp(`hw.btn.ins.${i}`)} />;
       })}
       <Desc desc="Touch threshold: ">
-        <NumInput min="0" max="100" {...getProp('hw.btn.tt')} required />
+        <NumInput min="0" max="100" class="s" {...getProp('hw.btn.tt')} required />
       </Desc>
       <Desc desc="IR pin: ">
-        <NumInput min="-1" max="40" style="width:35px" {...getProp('hw.ir.pin')} />
-        <Select {...getProp('hw.ir.type')} class="mx-1">
+        <NumInput class="xs" min="-1" max="40" {...getProp('hw.ir.pin')} />{' '}
+        <Select {...getProp('hw.ir.type')}>
           <option value="0">Remote disabled</option>
           <option value="1">24-key RGB</option>
           <option value="2">24-key with CT</option>
@@ -453,11 +475,19 @@ export function SettingsLeds(): JSX.Element {
           <option value="5">21-key RGB</option>
           <option value="6">6-key black</option>
           <option value="7">9-key red</option>
+          <option value="8">JSON remote</option>
         </Select>
         <span style="cursor: pointer;" class="mx-1" onClick={() => setSetting('hw.ir.pin', -1)}>
           &#215;
         </span>
       </Desc>
+      {settings.hw.ir.type === 8 && (
+        <div id="json">
+          JSON file:
+          <input type="file" name="data" ref={dataRef} accept=".json" />{' '}
+          <input type="button" value="Upload" onClick={() => uploadFile('/ir.json')} /> <br />
+        </div>
+      )}
       <div>
         <a href={wikiUrl('Infrared-Control')} target="_blank" rel="noreferrer">
           IR info
@@ -466,34 +496,30 @@ export function SettingsLeds(): JSX.Element {
       <Desc desc="Relay pin: ">
         <NumInput
           min="-1"
-          max="40"
+          max="33"
+          class="xs"
           {...getProp('hw.relay.pin')}
-          style={{ color: checkPin(settings.hw.relay.pin) ? '#fff' : '#f00', width: '35px' }}
+          style={{ color: checkPin(settings.hw.relay.pin) ? '#fff' : '#f00' }}
         />
         <Desc desc=" Invert " class="d-inline">
-          <CheckInput {...getProp('hw.relay.rev')} />
+          <ConvertCheckInput {...getProp('hw.relay.rev')} {...convertInvert} />
         </Desc>
         <span style="cursor: pointer;" class="mx-1" onClick={() => setSetting('hw.relay.pin', -1)}>
           &#215;
         </span>
       </Desc>
-      <hr />
+      <hr class="partial" />
       <h3>Defaults</h3>
       <Desc desc="Turn LEDs on after power up/reset: ">
         <CheckInput {...getProp('def.on')} />
       </Desc>
       <Desc desc="Default brightness: ">
-        <NumInput {...getProp('def.bri')} min="0" max="255" required /> (0-255)
+        <NumInput {...getProp('def.bri')} class="s" min="0" max="255" required /> (0-255)
       </Desc>
+      <br />
       <Desc desc="Apply preset ">
-        <NumInput {...getProp('def.ps')} min="0" max="250" required /> at boot (0 uses defaults)
-      </Desc>
-      <div>
-        - <i>or</i> -
-      </div>
-      <Desc desc="Set current preset cycle setting as boot default: ">
-        {/* JATRA - TODO - seems this is unused on backend?? */}
-        <input type="checkbox" name="PC" />
+        <NumInput {...getProp('def.ps')} class="s" min="0" max="250" required /> at boot (0 uses
+        defaults)
       </Desc>
       <br />
       <Desc desc="Use Gamma correction for color: ">
@@ -512,24 +538,24 @@ export function SettingsLeds(): JSX.Element {
       </Desc>
       <br />
       <Desc desc="Brightness factor: ">
-        <NumInput {...getProp('light.scale-bri')} min="1" max="255" required /> %
+        <NumInput {...getProp('light.scale-bri')} class="s" min="1" max="255" required /> %
       </Desc>
       <h3>Transitions</h3>
       <Desc desc="Crossfade: ">
         <CheckInput {...getProp('light.tr.mode')} />
       </Desc>
       <Desc desc="Transition Time: ">
-        <NumInput {...getProp('light.tr.dur')} maxLength={5} size={2} /> ms
+        <NumInput {...getProp('light.tr.dur')} class="l" min="0" max="6500" /> ms
       </Desc>
       <Desc desc="Enable Palette transitions: ">
         <CheckInput {...getProp('light.tr.pal')} />
       </Desc>
       <h3>Timed light</h3>
       <Desc desc="Default Duration: ">
-        <NumInput {...getProp('light.nl.dur')} min="1" max="255" required /> min
+        <NumInput {...getProp('light.nl.dur')} class="s" min="1" max="255" required /> min
       </Desc>
       <Desc desc="Default Target brightness: ">
-        <NumInput {...getProp('light.nl.tbri')} min="0" max="255" required />
+        <NumInput {...getProp('light.nl.tbri')} class="s" min="0" max="255" required />
       </Desc>
       <Desc desc="Mode: ">
         <Select {...getProp('light.nl.mode')}>
@@ -564,6 +590,7 @@ export function SettingsLeds(): JSX.Element {
         <button type="button">Back</button>
       </a>
       <button type="submit">Save</button>
+      <Toast toast={toast} clearToast={() => setToast(undefined)} />
     </form>
   );
 }
