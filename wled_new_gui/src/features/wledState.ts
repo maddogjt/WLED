@@ -12,7 +12,7 @@ export type TInfo = {
   wifi: { signal: string; rssi: string };
   uptime: string;
   mac: string | number;
-  fs: { u: number; t: number };
+  fs: { u: number; t: number; pmt: number };
   arch: string;
   core: string;
   lwip: string;
@@ -82,10 +82,10 @@ type SColor = number[];
 
 let boundUpdateRootState: (s: Partial<RootState>) => void;
 
-export function initWledState(store: Store<RootState>): void {
-  void getJson<Partial<RootState>>('/json').then((json) => {
+export function initWledState(store: Store<RootState>): Promise<void> {
+  return getJson<Partial<RootState>>('/json').then((json) => {
     boundUpdateRootState = store.action(updateRootState);
-    const { settings, ...rest } = json;
+    const { ...rest } = json;
     boundUpdateRootState(rest);
   });
 }

@@ -30,6 +30,7 @@ export const store: Store =
   process.env.NODE_ENV === 'development' ? preduxDevTools(tempStore) : tempStore;
 
 initSettings(store);
-initWledState(store);
+const res = initWledState(store);
+res.then(() => initPresets(store)).catch(() => {return});
 initPalettePreviews(store);
 initPresets(store);

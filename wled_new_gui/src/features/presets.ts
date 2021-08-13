@@ -2,7 +2,8 @@ import { Store } from 'predux/store';
 import { getJson, sendCommand } from './connection';
 import { RootState, store } from './store';
 
-const kPresetStorageKey = 'wlP';
+const kPresetStorageKey = 'wled2P';
+const kPresetVersionKey = 'wled2Pmt';
 
 export type TPreset = {
   n: string;
@@ -44,21 +45,26 @@ async function getPresetData(): Promise<PresetData> {
   // });
 }
 
-const versionIII = 2;
-
 export function initPresets(store: Store<RootState>): void {
-  const presetDataJson = localStorage.getItem(kPresetStorageKey);
-  if (presetDataJson) {
-    try {
-      const parsed = JSON.parse(presetDataJson) as {
-        p: PresetData;
-        version: number;
-      };
-      if (parsed && parsed.version === versionIII && parsed.p) {
-        store.action(updatePresets)(parsed.p);
-        return;
-      }
-    } catch (e) {}
+  const { info } = store.getState();
+
+  const pmt = info?.fs.pmt;
+
+  const pmtLS = localStorage.getItem(kPresetVersionKey);
+  if (pmt && pmt > 0 && pmtLS && parseInt(pmtLS) === pmt) {
+    const presetDataJson = localStorage.getItem(kPresetStorageKey);
+    if (presetDataJson) {
+      try {
+        const parsed = JSON.parse(presetDataJson) as {
+          p: PresetData;
+          version: number;
+        };
+        if (parsed && parsed.p) {
+          store.action(updatePresets)(parsed.p);
+          return;
+        }
+      } catch (e) {}
+    }
   }
 
   loadPresets(store);
@@ -67,7 +73,8 @@ export function initPresets(store: Store<RootState>): void {
 function loadPresets(store: Store): void {
   void getPresetData().then((presetData) => {
     store.action(updatePresets)(presetData);
-    localStorage.setItem(kPresetStorageKey, JSON.stringify({ p: presetData, version: versionIII }));
+    localStorage.setItem(kPresetStorageKey, JSON.stringify({ p: presetData }));
+    localStorage.setItem(kPresetVersionKey, (store.getState().info?.fs.pmt ?? 0).toString());
   });
 }
 
