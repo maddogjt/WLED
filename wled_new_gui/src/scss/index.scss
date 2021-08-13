@@ -352,9 +352,11 @@ p {
   }
 }
 
-#infoimg {
-  height: 55px;
-  display: inline-block;
+.wi {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  width: 210px;
+  margin: 8px;
 }
 
 .theme-light {

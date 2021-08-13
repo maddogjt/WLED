@@ -16,7 +16,7 @@ function getRuntimeStr(rt: string) {
   return str;
 }
 
-function getRows(i: TInfo): [string, string][] {
+function getRows(i: TInfo): [string, string, boolean][] {
   const heap = (i.freeheap / 1000).toFixed(1);
   let pwru = 'Not calculated';
   if (i.leds.pwr > 1000) {
@@ -26,16 +26,16 @@ function getRows(i: TInfo): [string, string][] {
     pwru = `${50 * Math.round(i.leds.pwr / 50)} mA`;
   }
 
-  const res: [string, string][] = [];
-  const inforow = (k: string, v: string | number, u = '') => {
-    res.push([k, `${v}${u}`]);
+  const res: [string, string, boolean][] = [];
+  const inforow = (k: string, v: string | number, u = '', customInner = false) => {
+    res.push([k, `${v}${u}`, customInner]);
   };
   if (i.u) {
     for (const [k, val] of Object.entries<(string | number) | [string | number, string]>(i.u)) {
       if (Array.isArray(val)) {
-        inforow(k, val[0], val[1]);
+        inforow(k, val[0], val[1], val[1] === undefined);
       } else {
-        inforow(k, val);
+        inforow(k, val, ' ', true);
       }
     }
   }
@@ -71,9 +71,9 @@ export function Info(props: {
   return (
     <div id="info" data-modalactive={props.show} class="modal2">
       <img
-        id="infoimg"
+        class="wi"
         alt=""
-        src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAggAAACMCAYAAAAZQlGEAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAKLSURBVHhe7dgxjtwwEADBpf//5zUDwklnpzFAnKoSTigNFTT0AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGDcOieX+G5nvNLaznil6f1Nv+/tz3c7+3tmen/Tpu/jbe877c85AQD+EQgAQAgEACAEAgAQAgEACIEAAIRAAABCIAAAIRAAgBAIAEAIBAAgBAIAEAIBAAiBAACEQAAAQiAAACEQAIAQCABACAQAINY5+aHvdsYRazvjK9jfM7fvz/0+Y3+/2+336w8CABACAQAIgQAAhEAAAEIgAAAhEACAEAgAQAgEACAEAgAQAgEACIEAAIRAAABCIAAAIRAAgBAIAEAIBAAgBAIAEAIBAAiBAADEOudrfLczXmltZ3yF6fuwv2em9+d+n5ne3zT3cZfp+/AHAQAIgQAAhEAAAEIgAAAhEACAEAgAQAgEACAEAgAQAgEACIEAAIRAAABCIAAAIRAAgBAIAEAIBAAgBAIAEAIBAAiBAACEQAAAYp3zNb7bGUes7Yz8wO334fmeuf35bmd/z9y+v9ufzx8EACAEAgAQAgEACIEAAIRAAABCIAAAIRAAgBAIAEAIBAAgBAIAEAIBAAiBAACEQAAAQiAAACEQAIAQCABACAQAIAQCABACAQCIdc4x3+2MV1rbGfmFpr+/6e/l9ue73fT+pt1+H2/bn+/lGX8QAIAQCABACAQAIAQCABACAQAIgQAAhEAAAEIgAAAhEACAEAgAQAgEACAEAgAQAgEACIEAAIRAAABCIAAAIRAAgBAIAEAIBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgP/u8/kLYCqAxINTyZkAAAAASUVORK5CYII="
+        src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB0AAAAFCAYAAAC5Fuf5AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABbSURBVChTlY9bDoAwDMNW7n9nwCipytQN4Z8tbrTHmDmF4oPzyldwRqp1SSdnV/NuZuzqerAByxXznBw3igkeFEfXyUuhK/yFM0CxJfyqXZEOc6/Sr9/bf7uIC5Nwd7orMvAPAAAAAElFTkSuQmCC"
       />
       <br />
       <div id="kv">
@@ -85,7 +85,9 @@ export function Info(props: {
             return (
               <tr key={v[0]}>
                 <td class="text-start p-1">{v[0]}</td>
-                <td class="text-end p-1">{v[1]}</td>
+                <td class="text-end p-1">
+                  {v[2] ? <div dangerouslySetInnerHTML={{__html: v[1]}} /> : v[1]}
+                </td>
               </tr>
             );
           })}
