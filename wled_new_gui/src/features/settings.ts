@@ -61,6 +61,7 @@ export interface Settings {
         macros: number[]; //[0, 0, 0];
       }[];
       tt: number; //32;
+      mqtt: boolean;
     };
     ir: {
       pin: number; //4;
@@ -198,7 +199,7 @@ export interface Settings {
     psk?: string;
     aota: boolean; // true
   };
-  um: []; // {} -- not sure about this,
+  um: {[key: string]: Record<string, unknown>};
   loaded: boolean;
 }
 

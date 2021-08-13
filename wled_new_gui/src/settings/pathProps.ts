@@ -2,7 +2,7 @@
 import { Path, PathType, typedDotProp } from './Accessors';
 
 export interface Prop<T> {
-  pvalue: T;
+  value: T;
   set: (v: T) => void;
 }
 
@@ -12,7 +12,7 @@ export function getPathProp<O extends object, P extends string>(
   param: Path<O, P>
 ): Prop<PathType<O, P>> {
   return {
-    pvalue: typedDotProp.get<O, P>(obj, param),
+    value: typedDotProp.get<O, P>(obj, param),
     set: (v: PathType<O, P>) => set(base => typedDotProp.set<O, P>(base, param, v)),
   };
 }
@@ -23,7 +23,7 @@ export function getPathPropRaw<O extends object, T>(
   path: number | string | (string | number)[]
 ): Prop<T> {
   return {
-    pvalue: typedDotProp.raw.get<O, T>(obj, path),
+    value: typedDotProp.raw.get<O, T>(obj, path),
     set: (v: T) => set(base => typedDotProp.raw.set<O, O>(base, path, v)),
   };
 }

@@ -37,12 +37,11 @@ export function SettingsWifi(): JSX.Element {
       <h2>WiFi setup</h2>
       <h3>Connect to existing network</h3>
       <div>Network name (SSID, empty to not connect):</div>
-      <TextInput name="CS" maxLength={32} {...getProp('nw.ins.0.ssid')} />
+      <TextInput maxLength={32} {...getProp('nw.ins.0.ssid')} />
       <div>Network password:</div>
       <div>
         <TextInput
           type="password"
-          name="CP"
           maxLength={63}
           placeholder={'•'.repeat(settings.nw.ins[0].pskl)}
           {...getProp('nw.ins.0.psk')}
@@ -104,7 +103,9 @@ export function SettingsWifi(): JSX.Element {
           <Select {...getProp('eth.type')}>
             <option value="0">None</option>
             <option value="2">ESP32-POE</option>
+            <option value="6">ESP32Deux</option>
             <option value="4">QuinLED-ESP32</option>
+            <option value="5">TwilightLord-ESP32</option>
             <option value="3">WESP32</option>
             <option value="1">WT32-ETH01</option>
           </Select>

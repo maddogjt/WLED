@@ -7,6 +7,8 @@ import { selectInfo } from '../features/wledState';
 import { useStateFromProps } from '../welcome/useStateFromProps';
 import { CheckInput, ConvertCheckInput, Desc, NumInput, TextInput, wikiUrl } from './Controls';
 import { bindGetPathProp } from './pathProps';
+import { Toast, ToastDef } from './Toast';
+import { uploadFile } from './utils';
 
 const kRandomBackgroundUrl = 'https://picsum.photos/1920/1080';
 
@@ -15,6 +17,7 @@ export function SettingsUi(): JSX.Element {
   const id = useSelector2(selectSettings, (s) => s.id);
   const [serverDesc, setServerDesc] = useStateFromProps(id.name);
   const [syncToggle, setSyncToggle] = useStateFromProps(info.str ?? false);
+  const [toast, setToast] = useState<ToastDef>();
 
   const [settings, updateSettings] = useState(useSelector(selectLocalSettings));
   const [message, setMessage] = useState({ message: '', success: true });
@@ -22,6 +25,9 @@ export function SettingsUi(): JSX.Element {
   const uls = useAction(updateLocalSettings);
 
   const getProp = bindGetPathProp(settings, updateSettings);
+
+  const skinRef = useRef<HTMLInputElement>(null);
+  const holidayRef = useRef<HTMLInputElement>(null);
 
   const Save = () => {
     try {
@@ -56,16 +62,18 @@ export function SettingsUi(): JSX.Element {
           Save
         </button>
         {message.message && (
-          <div><span style={message.success ? 'color:green;' : 'color:red;'}>{message.message}</span></div>
+          <div>
+            <span style={message.success ? 'color:green;' : 'color:red;'}>{message.message}</span>
+          </div>
         )}
         <hr />
       </div>
       <h2>Web Setup</h2>
       <Desc desc="Server description: ">
-        <TextInput pvalue={serverDesc} set={setServerDesc} maxLength={32} />
+        <TextInput value={serverDesc} set={setServerDesc} maxLength={32} />
       </Desc>
       <Desc desc="Sync button toggles both send and receive: ">
-        <CheckInput pvalue={syncToggle} set={setSyncToggle} />
+        <CheckInput value={syncToggle} set={setSyncToggle} />
       </Desc>
       <div>
         <i>
@@ -100,6 +108,9 @@ export function SettingsUi(): JSX.Element {
       <Desc desc="Show preset IDs: ">
         <CheckInput {...getProp('ui.pid')} />
       </Desc>
+      <Desc desc="Set segment length instead of stop LED: ">
+        <CheckInput {...getProp('ui.seglen')} />
+      </Desc>
       <Desc desc="I hate dark mode: ">
         <ConvertCheckInput
           {...getProp('theme.base')}
@@ -131,6 +142,32 @@ export function SettingsUi(): JSX.Element {
           from={(v) => (v ? kRandomBackgroundUrl : '')}
         />
       </Desc>
+      <Desc desc="Enable custom CSS: ">
+        <CheckInput {...getProp('ui.css')} />
+      </Desc>
+      {settings.ui.css && (
+        <Desc desc="Custom CSS: ">
+          <input type="file" ref={skinRef} accept=".css" />{' '}
+          <input
+            type="button"
+            value="Upload"
+            onClick={() => uploadFile(skinRef, '/skin.css', setToast)}
+          />
+        </Desc>
+      )}
+      <Desc desc="Enable custom Holidays list: ">
+        <CheckInput {...getProp('ui.hdays')} />
+      </Desc>
+      {settings.ui.hdays && (
+        <Desc desc="Holidays: ">
+          <input type="file" ref={holidayRef} accept=".json" />{' '}
+          <input
+            type="button"
+            value="Upload"
+            onClick={() => uploadFile(holidayRef, '/holidays.json', setToast)}
+          />
+        </Desc>
+      )}
       <hr />
       <a href="/settings">
         <button type="button">Back</button>
@@ -138,6 +175,7 @@ export function SettingsUi(): JSX.Element {
       <button type="button" onClick={() => Save()}>
         Save
       </button>
+      <Toast toast={toast} clearToast={() => setToast(undefined)} />
     </form>
   );
 }

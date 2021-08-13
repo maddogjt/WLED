@@ -9,122 +9,119 @@ export function wledUrl(page: string): string {
   return `https://github.com/Aircoookie/WLED/${page}`;
 }
 
-function isNumber(
-  props: Prop<boolean> | Prop<number> | Prop<boolean | undefined>
-): props is Prop<number> {
-  return typeof props.pvalue === 'number';
-}
-
 export function CheckInput(
   props: (Prop<boolean> | Prop<number> | Prop<boolean | undefined>) &
-    JSX.HTMLAttributes<HTMLInputElement> & {
-      trueValue?: number;
-      falseValue?: number;
-    }
+    Omit<JSX.HTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'checked'>
 ): JSX.Element {
-  const v = isNumber(props) ? props.pvalue !== 0 : props.pvalue;
-  const s = isNumber(props)
-    ? (v: boolean) => props.set(v ? props.trueValue ?? 1 : props.falseValue ?? 0)
-    : props.set;
+  const { value, set, ...rest } = props;
+  const v = typeof value === 'number' ? value !== 0 : value;
+  const s =
+    typeof value === 'number'
+      ? (v: boolean) => (set as (v: number) => void)(v ? 1 : 0)
+      : (set as (v: boolean) => void);
   return (
-    <input type="checkbox" checked={v} {...props} onChange={(e) => s(e.currentTarget.checked)} />
+    <input type="checkbox" checked={v} onChange={(e) => s(e.currentTarget.checked)} {...rest} />
   );
 }
 
 export const convertInvert = {
   to: (v: boolean): boolean => !v,
-  from: (v: boolean): boolean => !v
-}
+  from: (v: boolean): boolean => !v,
+};
 
 export function ConvertCheckInput<T>(
   props: Prop<T> &
-    JSX.HTMLAttributes<HTMLInputElement> & {
+    Omit<JSX.HTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'checked'> & {
       to: (v: T) => boolean;
       from: (v: boolean, prev: T) => T;
     }
 ): JSX.Element {
+  const { value, set, to, from, ...rest } = props;
   return (
     <input
       type="checkbox"
-      checked={props.to(props.pvalue)}
-      {...props}
-      onChange={(e) => props.set(props.from(e.currentTarget.checked, props.pvalue))}
+      checked={to(value)}
+      onChange={(e) => set(from(e.currentTarget.checked, value))}
+      {...rest}
     />
   );
 }
 
 export function TextInput(
-  props: (Prop<string> | Prop<string | undefined>) & JSX.HTMLAttributes<HTMLInputElement>
+  props: { updateOnChange?: boolean } & (Prop<string> | Prop<string | undefined>) &
+    Omit<JSX.HTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'onInput'>
 ): JSX.Element {
+  const { value, set, updateOnChange, ...rest } = props;
   return (
     <input
-      value={props.pvalue}
-      {...props}
-      class={` ${props.class ?? ''}`}
-      onChange={(e) => props.set(e.currentTarget.value)}
+      value={value}
+      {...{
+        [updateOnChange ? 'onChange' : 'onInput']: (
+          e: JSX.TargetedEvent<HTMLInputElement, Event>
+        ) => set(e.currentTarget.value),
+      }}
+      {...rest}
     />
   );
 }
 
 export function NumInput(
-  props: (Prop<number> | Prop<number | undefined>) & JSX.HTMLAttributes<HTMLInputElement>
+  props: { updateOnChange?: boolean } & (Prop<number> | Prop<number | undefined>) &
+    Omit<JSX.HTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'onInput'>
 ): JSX.Element {
+  const { value, set, updateOnChange, ...rest } = props;
   return (
     <input
-      value={props.pvalue}
       type="number"
-      {...props}
-      class={`${props.class ?? ''}`}
-      onChange={(e) => props.set(e.currentTarget.valueAsNumber)}
+      value={value}
+      {...{
+        [updateOnChange ? 'onChange' : 'onInput']: (
+          e: JSX.TargetedEvent<HTMLInputElement, Event>
+        ) => set(e.currentTarget.valueAsNumber),
+      }}
+      {...rest}
     />
   );
 }
 
 export function IpAddress(props: Prop<number[]> | Prop<number[] | undefined>): JSX.Element {
-  const addr = props.pvalue ?? [0, 0, 0, 0];
+  const addr = props.value ?? [0, 0, 0, 0];
   const update = (idx: number, val: number) => {
-    const newAddr = [...(props.pvalue ?? [0, 0, 0, 0])];
+    const newAddr = [...(props.value ?? [0, 0, 0, 0])];
     newAddr[idx] = val;
     props.set(newAddr);
+  };
+
+  const iprops: JSX.HTMLAttributes<HTMLInputElement> = {
+    type: 'number',
+    min: 0,
+    max: 255,
+    step: 1,
+    class: 'ip',
+    required: true,
   };
   return (
     <>
       <input
-        type="number"
-        min="0"
-        max="255"
-        class="ip"
-        required
+        {...iprops}
         value={addr[0]}
         onChange={(e) => update(0, e.currentTarget.valueAsNumber)}
       />
       {' . '}
       <input
-        type="number"
-        min="0"
-        max="255"
-        class="ip"
-        required
+        {...iprops}
         value={addr[1]}
         onChange={(e) => update(1, e.currentTarget.valueAsNumber)}
       />
       {' . '}
       <input
-        type="number"
-        min="0"
-        max="255"
-        class="ip"
-        required
+        {...iprops}
         value={addr[2]}
         onChange={(e) => update(2, e.currentTarget.valueAsNumber)}
       />
       {' . '}
       <input
-        type="number"
-        min="0"
-        max="255"
-        class="ip"
-        required
+        {...iprops}
         value={addr[3]}
         onChange={(e) => update(3, e.currentTarget.valueAsNumber)}
       />
@@ -143,15 +140,9 @@ export function Desc(props: { desc: string } & JSX.HTMLAttributes<HTMLDivElement
 }
 
 export function Select(
-  props: (Prop<number> | Prop<number | undefined>) & JSX.HTMLAttributes<HTMLSelectElement>
+  props: (Prop<number> | Prop<number | undefined>) &
+    Omit<JSX.HTMLAttributes<HTMLSelectElement>, 'value' | 'onChange' | 'onInput'>
 ): JSX.Element {
-  return (
-    <select
-      value={props.pvalue}
-      onChange={(e) => {
-        props.set(parseInt(e.currentTarget.value));
-      }}
-      {...props}
-    />
-  );
+  const { value, set, ...rest } = props;
+  return <select value={value} onChange={(e) => set(parseInt(e.currentTarget.value))} {...rest} />;
 }

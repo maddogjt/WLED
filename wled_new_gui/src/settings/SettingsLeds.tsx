@@ -4,6 +4,7 @@ import { useSelector2 } from 'predux/preact';
 import { selectSettings, Settings } from '../features/settings';
 import { selectInfo } from '../features/wledState';
 import { useStateFromProps } from '../welcome/useStateFromProps';
+import { Path, PathType, typedDotProp } from './Accessors';
 import {
   CheckInput,
   ConvertCheckInput,
@@ -13,10 +14,10 @@ import {
   Select,
   wikiUrl,
 } from './Controls';
-import { getPathProp, bindGetPathProp, Prop, bindGetPathPropRaw } from './pathProps';
-import { Path, PathType, typedDotProp } from './Accessors';
-import { range } from './utils';
-import { Toast } from './Toast';
+import { bindGetPathProp, Prop } from './pathProps';
+import { PinInput, TPin, usePins } from './Pins';
+import { Toast, ToastDef } from './Toast';
+import { range, uploadFile } from './utils';
 
 interface LEDInfo {
   id: number;
@@ -64,11 +65,11 @@ const maxPB = 4096;
 function LEDButton(
   props: {
     index: number;
-    checkPin: (p: number) => boolean;
+    pins: TPin[];
   } & Prop<TBTN | undefined> &
     JSX.IntrinsicAttributes
 ): JSX.Element {
-  const { index, pvalue, set, checkPin } = props;
+  const { index, value: pvalue, set, pins } = props;
   if (pvalue === undefined) {
     return <div />;
   }
@@ -77,18 +78,14 @@ function LEDButton(
   const newSet = (toCall: (v: TBTN) => TBTN): void => {
     props.set(toCall(pvalue));
   };
+
+  const getProp = bindGetPathProp(pvalue, newSet);
+
   return (
     <Desc desc={`Button ${index} pin: `}>
-      <NumInput
-        min={-1}
-        max={40}
-        class="xs"
-        pvalue={pvalue.pin[0]}
-        set={setPin}
-        style={{ color: checkPin(pvalue.pin[0]) ? '#fff' : '#f00' }}
-      />
+      <PinInput pins={pins} pId={`hw.btn.ins.${props.index}.pin.0`} {...getProp('pin.0')} />
       &nbsp;
-      <Select {...getPathProp(pvalue, newSet, 'type')}>
+      <Select {...getProp('type')}>
         <option value="0">Disabled</option>
         <option value="2">Pushbutton</option>
         <option value="3">Push inverted</option>
@@ -98,7 +95,7 @@ function LEDButton(
         <option value="7">Analog</option>
         <option value="8">Analog Inverted</option>
       </Select>
-      <span style="cursor: pointer;" class="mx-1" onClick={() => setPin(-1)}>
+      <span role="button" class="mx-1" onClick={() => setPin(-1)}>
         &#215;
       </span>
     </Desc>
@@ -124,40 +121,26 @@ function getMem(type: number, len: number, p0: number) {
   return len * 3;
 }
 
-// Flash memory reserved pins.
-// TODO - this should come system, see 'um_p' setting code
-const reservedPins = [6, 7, 8, 9, 10, 11];
-
-function getPins(settings: Settings): number[] {
-  const { hw } = settings;
-  const pins: number[] = [...reservedPins];
-  pins.push(hw.relay.pin);
-  hw.btn.ins.forEach((b) => pins.push(...b.pin));
-  pins.push(hw.ir.pin);
-  hw.led.ins.forEach((i) => pins.push(...i.pin));
-  return pins;
-}
-
 type LedInstance = Settings['hw']['led']['ins'][0];
 
 function LEDOutput(
   props: {
     id: number;
+    pins: TPin[];
   } & Prop<LedInstance | undefined>
 ): JSX.Element {
-  const { pvalue, id } = props;
-  if (pvalue === undefined) {
+  const { value, id } = props;
+  if (value === undefined) {
     return <div />;
   }
 
-  const ledType = ledTypesById[pvalue.type];
+  const ledType = ledTypesById[value.type];
 
   const set = (toCall: (v: LedInstance) => LedInstance): void => {
-    props.set(toCall(pvalue));
+    props.set(toCall(value));
   };
 
-  const getProp = bindGetPathProp(pvalue, set);
-  const getPropRaw = bindGetPathPropRaw(pvalue, set);
+  const getProp = bindGetPathProp(value, set);
 
   return (
     <div class="iST">
@@ -181,10 +164,26 @@ function LEDOutput(
         </Select>
       </Desc>
       <Desc desc={ledType.config === 'ClkData' ? 'Data: ' : ledType.pins > 1 ? 'Pins: ' : 'Pin: '}>
-        <NumInput type="number" class="xs" min="0" max="33" {...getPropRaw('pin.0')} required />
+        <PinInput
+          pins={props.pins}
+          pId={`hw.led.ins.${id}.pin.0`}
+          min="0"
+          max="33"
+          {...getProp('pin.0')}
+          required
+        />
         {ledType.config === 'ClkData' && <span>Clock:</span>}
         {[...range(1, ledType.pins ?? 1)].map((v: number) => {
-          return <NumInput key={v} class="xs" min="0" max="33" {...getPropRaw(`pin.${v}`)} />;
+          return (
+            <PinInput
+              key={v}
+              pins={props.pins}
+              pId={`hw.led.ins.${id}.pin.${v}`}
+              min="0"
+              max="33"
+              {...getProp(`pin.${v}`)}
+            />
+          );
         })}
       </Desc>
       <Desc desc={ledType.config === 'Pins' ? 'Index: ' : 'Start: '}>
@@ -214,16 +213,7 @@ export function SettingsLeds(): JSX.Element {
   );
   const [aben, setAben] = useState(settings.hw.led.ledma !== 0);
 
-  const pins = useMemo(() => getPins(settings), [settings]);
-
-  const checkPin = (p: number): boolean => {
-    if (p === -1) {
-      return true;
-    }
-    const first = pins.indexOf(p);
-    if (first !== -1) return pins.indexOf(p, first + 1) === -1;
-    return true;
-  };
+  const pins = usePins(settings);
 
   const isRGBW = useMemo(
     () =>
@@ -233,34 +223,10 @@ export function SettingsLeds(): JSX.Element {
       ),
     [settings.hw.led.ins]
   );
-  const [toast, setToast] = useState<[boolean, string] | undefined>();
+  const [toast, setToast] = useState<ToastDef>();
 
   const getProp = bindGetPathProp<Settings>(settings, setSettings);
   const dataRef = useRef<HTMLInputElement>(null);
-
-  function uploadFile(name: string) {
-    if (!dataRef.current?.files) {
-      return false;
-    }
-    const req = new XMLHttpRequest();
-    req.onreadystatechange = () => {
-      if (req.readyState === 4) {
-        if (req.status === 200) {
-          setToast([false, req.responseText]);
-        } else {
-          setToast([true, req.statusText]);
-        }
-      }
-    };
-    req.open('POST', 'http://192.168.0.211/upload');
-    const formData = new FormData();
-    formData.append('data', dataRef.current.files[0], name);
-    setToast(undefined);
-    req.send(formData);
-
-    dataRef.current.value = '';
-    return false;
-  }
 
   // function enABL() {
   //   var e = gId('able').checked;
@@ -354,7 +320,7 @@ export function SettingsLeds(): JSX.Element {
       <br />
       <Desc desc="Enable automatic brightness limiter: ">
         <CheckInput
-          pvalue={aben}
+          value={aben}
           set={(v: boolean) => {
             setAben(v);
             if (!v) setSetting('hw.led.ledma', 0);
@@ -393,7 +359,7 @@ export function SettingsLeds(): JSX.Element {
           <div>LED voltage (Max. current for a single LED):</div>
           <div>
             <Select
-              pvalue={lasel}
+              value={lasel}
               set={(v: number) => {
                 setLasel(v);
                 setSetting('hw.led.ledma', v);
@@ -421,7 +387,7 @@ export function SettingsLeds(): JSX.Element {
       <h3>Hardware setup</h3>
       <div>LED outputs:</div>
       {settings.hw.led.ins.map((b, i) => (
-        <LEDOutput key={i} id={i} {...getProp(`hw.led.ins.${i}`)} />
+        <LEDOutput key={i} id={i} pins={pins} {...getProp(`hw.led.ins.${i}`)} />
       ))}
       <div>
         {settings.hw.led.ins.length < maxB && (
@@ -459,13 +425,13 @@ export function SettingsLeds(): JSX.Element {
       )}
       <hr class="partial" />
       {settings.hw.btn.ins.map((_e, i: number) => {
-        return <LEDButton key={i} index={i} checkPin={checkPin} {...getProp(`hw.btn.ins.${i}`)} />;
+        return <LEDButton key={i} index={i} pins={pins} {...getProp(`hw.btn.ins.${i}`)} />;
       })}
       <Desc desc="Touch threshold: ">
         <NumInput min="0" max="100" class="s" {...getProp('hw.btn.tt')} required />
       </Desc>
       <Desc desc="IR pin: ">
-        <NumInput class="xs" min="-1" max="40" {...getProp('hw.ir.pin')} />{' '}
+        <PinInput pins={pins} pId="hw.ir.pin" {...getProp('hw.ir.pin')} />{' '}
         <Select {...getProp('hw.ir.type')}>
           <option value="0">Remote disabled</option>
           <option value="1">24-key RGB</option>
@@ -477,15 +443,19 @@ export function SettingsLeds(): JSX.Element {
           <option value="7">9-key red</option>
           <option value="8">JSON remote</option>
         </Select>
-        <span style="cursor: pointer;" class="mx-1" onClick={() => setSetting('hw.ir.pin', -1)}>
+        <span role="button" class="mx-1" onClick={() => setSetting('hw.ir.pin', -1)}>
           &#215;
         </span>
       </Desc>
       {settings.hw.ir.type === 8 && (
         <div id="json">
           JSON file:
-          <input type="file" name="data" ref={dataRef} accept=".json" />{' '}
-          <input type="button" value="Upload" onClick={() => uploadFile('/ir.json')} /> <br />
+          <input type="file" ref={dataRef} accept=".json" />{' '}
+          <input
+            type="button"
+            value="Upload"
+            onClick={() => uploadFile(dataRef, '/ir.json', setToast)}
+          />
         </div>
       )}
       <div>
@@ -494,17 +464,11 @@ export function SettingsLeds(): JSX.Element {
         </a>
       </div>
       <Desc desc="Relay pin: ">
-        <NumInput
-          min="-1"
-          max="33"
-          class="xs"
-          {...getProp('hw.relay.pin')}
-          style={{ color: checkPin(settings.hw.relay.pin) ? '#fff' : '#f00' }}
-        />
+        <PinInput pins={pins} pId="hw.relay.pin" max="33" {...getProp('hw.relay.pin')} />
         <Desc desc=" Invert " class="d-inline">
           <ConvertCheckInput {...getProp('hw.relay.rev')} {...convertInvert} />
         </Desc>
-        <span style="cursor: pointer;" class="mx-1" onClick={() => setSetting('hw.relay.pin', -1)}>
+        <span role="button" class="mx-1" onClick={() => setSetting('hw.relay.pin', -1)}>
           &#215;
         </span>
       </Desc>
@@ -523,16 +487,18 @@ export function SettingsLeds(): JSX.Element {
       </Desc>
       <br />
       <Desc desc="Use Gamma correction for color: ">
-        <CheckInput
-          pvalue={settings.light.gc.col > 1.5}
-          set={(v: boolean) => setSetting('light.gc.col', v ? 2.8 : 1.0)}
+        <ConvertCheckInput
+          {...getProp('light.gc.col')}
+          to={(v) => v > 1.5}
+          from={(v) => (v ? 2.8 : 1.0)}
         />{' '}
         (strongly recommended)
       </Desc>
       <Desc desc="Use Gamma correction for brightness: ">
-        <CheckInput
-          pvalue={settings.light.gc.bri > 1.5}
-          set={(v: boolean) => setSetting('light.gc.bri', v ? 2.8 : 1.0)}
+        <ConvertCheckInput
+          {...getProp('light.gc.bri')}
+          to={(v) => v > 1.5}
+          from={(v) => (v ? 2.8 : 1.0)}
         />{' '}
         (not recommended)
       </Desc>

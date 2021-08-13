@@ -25,6 +25,9 @@ export interface UISettings {
   labels: boolean;
   pcmbot: boolean;
   pid: boolean;
+  seglen: boolean;
+  css: boolean;
+  hdays: boolean;
 }
 
 export interface LocalSettings {
@@ -44,6 +47,9 @@ export const defaultSettings: LocalSettings = {
     labels: true,
     pcmbot: false,
     pid: true,
+    seglen: false,
+    css: false,
+    hdays: false,
   },
 };
 

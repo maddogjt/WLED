@@ -9,7 +9,6 @@ export const initialConnectionState: {
   server: string;
 } = { connectionState: 'warning', server: remoteRoot };
 
-
 export async function getJson<T = unknown>(path: string): Promise<T> {
   const url = `http://${remoteRoot}${path}`;
   const fetchRes = await window.fetch(url, {
@@ -21,7 +20,6 @@ export async function getJson<T = unknown>(path: string): Promise<T> {
 
   if (!fetchRes.ok) {
     store.action(updateConnectionState)('error');
-    // showErrorToast();
   }
   const jsonRes = await fetchRes.json();
 
@@ -34,7 +32,11 @@ export type Command<T> = T & {
   time: number;
 };
 
-export async function sendCommand<TCommand, R = unknown>(cmdIn: TCommand, verbose = true, rinfo = true): Promise<R> {
+export async function sendCommand<TCommand, R = unknown>(
+  cmdIn: TCommand,
+  verbose = true,
+  rinfo = true
+): Promise<R> {
   const url = `http://${remoteRoot}${rinfo ? '/json/si' : '/json/state'}`;
 
   const command: Command<TCommand> = {
@@ -68,6 +70,26 @@ export async function sendCommand<TCommand, R = unknown>(cmdIn: TCommand, verbos
 
   ucs('valid');
   return jsonRes;
+}
+
+export function uploadFileAsync(files: FileList, name: string): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const req = new XMLHttpRequest();
+    req.onreadystatechange = () => {
+      if (req.readyState === 4) {
+        if (req.status === 200) {
+          resolve(req.responseText);
+        } else {
+          reject(req.statusText);
+        }
+      }
+    };
+    req.open('POST', `http://${remoteRoot}/upload`);
+    const formData = new FormData();
+    formData.append('data', files[0], name);
+    req.send(formData);
+    return false;
+  });
 }
 
 // const urs: Action<RootState, [newSettings: Partial<typeof initialSettings>]> = updateSettings;

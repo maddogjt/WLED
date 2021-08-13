@@ -110,7 +110,7 @@ export function SettingsSync(): JSX.Element {
       <br />
       <Desc desc="Type: ">
         <Select
-          pvalue={DI}
+          value={DI}
           set={(v: number) => {
             setDI(v);
             adj(v);
@@ -124,14 +124,7 @@ export function SettingsSync(): JSX.Element {
       </Desc>
       {DI == 0 && (
         <Desc desc="Port: ">
-          <NumInput
-            {...getProp('if.live.port')}
-            min="1"
-            max="65535"
-            value="5568"
-            class="d5"
-            required
-          />
+          <NumInput {...getProp('if.live.port')} min="1" max="65535" class="d5" required />
         </Desc>
       )}
       <Desc desc="Multicast: ">
@@ -235,7 +228,7 @@ export function SettingsSync(): JSX.Element {
           {...getProp('if.mqtt.psk')}
           placeholder={'•'.repeat(settings.if.mqtt.pskl)}
           autoComplete="off"
-          maxLength={40}
+          maxLength={64}
         />
       </Desc>
       <Desc desc="Client ID: ">
@@ -246,6 +239,9 @@ export function SettingsSync(): JSX.Element {
       </Desc>
       <Desc desc="Group Topic: ">
         <TextInput {...getProp('if.mqtt.topics.group')} maxLength={32} />
+      </Desc>
+      <Desc desc="Publish on button press: ">
+        <CheckInput {...getProp('hw.btn.mqtt')} />
       </Desc>
       <i>Reboot required to apply changes. </i>
       <a href={wikiUrl('MQTT')} target="_blank" rel="noreferrer">

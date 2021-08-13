@@ -13,7 +13,7 @@ import {
   TextInput,
   wikiUrl,
 } from './Controls';
-import { bindGetPathProp, bindGetPathPropRaw, Prop } from './pathProps';
+import { bindGetPathProp, Prop } from './pathProps';
 import { range } from './utils';
 
 function makeTimerList(input: TPreset[]): TPreset[] {
@@ -34,7 +34,6 @@ function makeTimerList(input: TPreset[]): TPreset[] {
 export function SettingsTime(): JSX.Element {
   const [settings, setSettings] = useStateFromProps(useSelector(selectSettings));
   const getProp = bindGetPathProp(settings, setSettings);
-  const getPropRaw = bindGetPathPropRaw(settings, setSettings);
   const setSetting = bindSetter(setSettings);
 
   const timers = useMemo(() => makeTimerList(settings.timers.ins), [settings.timers.ins]);
@@ -146,17 +145,17 @@ export function SettingsTime(): JSX.Element {
       <div>Countdown Goal:</div>
       <div>
         Year: 20
-        <NumInput {...getPropRaw('timers.cntdwn.goal.0')} min="0" max="99" required />
-        Month: <NumInput {...getPropRaw('timers.cntdwn.goal.1')} min="1" max="12" required />
+        <NumInput {...getProp('timers.cntdwn.goal.0')} min="0" max="99" required />
+        Month: <NumInput {...getProp('timers.cntdwn.goal.1')} min="1" max="12" required />
         Day:
-        <NumInput {...getPropRaw('timers.cntdwn.goal.2')} min="1" max="31" required />
+        <NumInput {...getProp('timers.cntdwn.goal.2')} min="1" max="31" required />
       </div>
       <div>
-        Hour: <NumInput {...getPropRaw('timers.cntdwn.goal.3')} min="0" max="23" required />
+        Hour: <NumInput {...getProp('timers.cntdwn.goal.3')} min="0" max="23" required />
         Minute:
-        <NumInput {...getPropRaw('timers.cntdwn.goal.4')} min="0" max="59" required />
+        <NumInput {...getProp('timers.cntdwn.goal.4')} min="0" max="59" required />
         Second:
-        <NumInput {...getPropRaw('timers.cntdwn.goal.5')} min="0" max="59" required />
+        <NumInput {...getProp('timers.cntdwn.goal.5')} min="0" max="59" required />
       </div>
       <h3>Macro presets</h3>
       <div>
@@ -170,8 +169,8 @@ export function SettingsTime(): JSX.Element {
         </i>
       </div>
       <Desc desc="Alexa On/Off Preset: ">
-        <NumInput {...getPropRaw('if.va.macros.0')} min="0" max="250" required />
-        <NumInput {...getPropRaw('if.va.macros.1')} min="0" max="250" required />
+        <NumInput {...getProp('if.va.macros.0')} min="0" max="250" required />
+        <NumInput {...getProp('if.va.macros.1')} min="0" max="250" required />
       </Desc>
       <Desc desc="Countdown-Over Preset: ">
         <NumInput {...getProp('timers.cntdwn.macro')} min="0" max="250" required />
@@ -234,9 +233,9 @@ export function SettingsTime(): JSX.Element {
             <TimePreset
               key={i}
               index={i}
-              pvalue={t}
+              value={t}
               set={(v) => {
-                setSetting('timers.ins', [...timers].fill(v, i, i));
+                setSetting('timers.ins', (t) => [...t].fill(v, i, i));
               }}
             />
           ))}
@@ -257,9 +256,9 @@ function TimePreset(props: { index: number } & Prop<TPreset>): JSX.Element {
   const i = props.index;
 
   const newSet = (toCall: (v: TPreset) => TPreset): void => {
-    props.set(toCall(props.pvalue));
+    props.set(toCall(props.value));
   };
-  const getProp = bindGetPathProp(props.pvalue, newSet);
+  const getProp = bindGetPathProp(props.value, newSet);
 
   return (
     <tr>
@@ -290,29 +289,28 @@ type TBTNMacro = Settings['hw']['btn']['ins'][0];
 
 function Button({
   index,
-  pvalue,
+  value,
   set,
 }: { index: number } & Prop<TBTNMacro | undefined>): JSX.Element {
-  if (!pvalue) {
+  if (!value) {
     return <div />;
   }
-  const v = pvalue.macros ?? [0, 0, 0];
-  const setPin = (i: number, val: number) => {
-    const macros = [...v];
-    macros[i] = val;
-    set({ ...pvalue, macros });
+  const newSet = (toCall: (v: TBTNMacro) => TBTNMacro): void => {
+    set(toCall(value));
   };
+  const getProp = bindGetPathProp(value, newSet);
+
   return (
     <tr>
       <td>Button {index}: </td>
       <td>
-        <NumInput min="0" max="250" pvalue={v[0]} set={(n: number) => setPin(0, n)} required />
+        <NumInput min="0" max="250" step="1" {...getProp('macros.0')} required />
       </td>
       <td>
-        <NumInput min="0" max="250" pvalue={v[1]} set={(n: number) => setPin(1, n)} required />
+        <NumInput min="0" max="250" step="1" {...getProp('macros.1')} required />
       </td>
       <td>
-        <NumInput min="0" max="250" pvalue={v[2]} set={(n: number) => setPin(2, n)} required />
+        <NumInput min="0" max="250" step="1" {...getProp('macros.2')} required />
       </td>
     </tr>
   );

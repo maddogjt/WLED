@@ -1084,6 +1084,16 @@ input[type='text'].search {
     width: 4em;
     margin: 2px;
 
+    appearance: revert;
+
+    &::-webkit-inner-spin-button,
+    &::-webkit-outer-spin-button {
+      -webkit-appearance: revert;
+    }
+
+    &.xxl {
+      width: 100px;
+    }
     &.xl {
       width: 85px;
     }

@@ -3,11 +3,15 @@ import dotProp from 'dot-prop-immutable';
 import { F, Object, S } from 'ts-toolbelt';
 
 export type PathType<O extends object, P extends string> = Object.Path<O, S.Split<P, '.'>>;
-export type Path<O extends object, P extends string> = F.AutoPath<O, P>;
+export type Path<O extends object, P extends string> = F.AutoPath<O, P> extends never
+  ? Object.Path<O, S.Split<P, '.'>> extends undefined
+    ? never
+    : P
+  : F.AutoPath<O, P>;
 
 function get<O extends object, P extends string>(
   object: O,
-  path: F.AutoPath<O, P>,
+  path: Path<O, P>,
   defaultValue?: PathType<O, P>
 ): PathType<O, P> {
   return dotProp.get(object, path, defaultValue);
@@ -15,7 +19,7 @@ function get<O extends object, P extends string>(
 
 function set<O extends object, P extends string>(
   object: O,
-  path: F.AutoPath<O, P>,
+  path: Path<O, P>,
   value: PathType<O, P> | ((v: PathType<O, P>) => PathType<O, P>)
 ): O {
   return dotProp.set(object, path, value);
@@ -23,13 +27,13 @@ function set<O extends object, P extends string>(
 
 function merge<O extends object, P extends string>(
   source: O,
-  path: F.AutoPath<O, P>,
+  path: Path<O, P>,
   value: Partial<PathType<O, P>>
 ): O {
   return dotProp.merge(source, path, value);
 }
 
-function del<O extends object, P extends string>(source: O, path: F.AutoPath<O, P>): O {
+function del<O extends object, P extends string>(source: O, path: Path<O, P>): O {
   return dotProp.delete<O, O>(source, path) as O;
 }
 
@@ -41,8 +45,7 @@ export const typedDotProp = {
   raw: dotProp,
 };
 
-
-export function bindSetter<T extends object>(setter: (inner: (v: T)=>T)=>void) {
+export function bindSetter<T extends object>(setter: (inner: (v: T) => T) => void) {
   return <P extends string>(
     path: Path<T, P>,
     value: PathType<T, P> | ((v: PathType<T, P>) => PathType<T, P>)
